@@ -1,0 +1,410 @@
+{
+  "summary": {
+    "n": 4,
+    "agent": {
+      "resolution_rate": 0.5,
+      "resolved": 2,
+      "either_rate": 0.5,
+      "either_resolved": 2,
+      "avg_turns": 2.25
+    },
+    "gpt4o": {
+      "resolution_rate": 0.25,
+      "resolved": 1,
+      "either_rate": 0.25,
+      "either_resolved": 1,
+      "avg_turns": 3.25
+    },
+    "per_judge": {
+      "gptoss": {
+        "agent": 2,
+        "gpt4o": 1
+      },
+      "qwen": {
+        "agent": 2,
+        "gpt4o": 1
+      }
+    }
+  },
+  "detail": [
+    {
+      "scenario": {
+        "id": "wifi_dfs_channel",
+        "symptom": "My MacBook keeps dropping Wi-Fi every few minutes at home. It's really annoying.",
+        "macos_version": "14",
+        "chip": "apple_silicon",
+        "root_cause": "The router is on a DFS channel (149) and the Mac disconnects on radar detection (CSA events).",
+        "system_state": {
+          "wdutil info / airport": "Wi-Fi: channel 149 (DFS), RSSI -52 (strong signal), PHY mode 802.11ax",
+          "log show wifi / disconnect reason": "repeated 'CSA' / 'channel switch announcement' and 'radar detected' events",
+          "facts": "macOS Sonoma 14.5, M2 MacBook Air. Signal is strong. Only this Mac drops; a Windows laptop is fine."
+        },
+        "correct_fix": "Change the router's 5GHz channel OFF the DFS range (use 36-48) so radar events stop forcing disconnects.",
+        "tags": []
+      },
+      "agent": {
+        "final": "**Root cause:** The MacBook is connected to a DFS (Dynamic Frequency Selection) channel, which can be prone to interference and drops, as indicated by the output: \"channel 149 (DFS), RSSI -52 (strong signal)\".\n\n**Fix:**\n```bash\nairport --scan\n```\nThen, manually switch to a non-DFS channel (e.g., channel 36-48) in your router's 5 GHz settings.\n\n**Verify:** Check if the Wi-Fi connection is stable after switching to a non-DFS channel by running `sudo wdutil info` again and verifying that the channel has changed.\n\n**If that doesn't fix it:** Try restarting the router and the MacBook, and then check the Wi-Fi connection again.",
+        "turns": 2,
+        "transcript": [
+          [
+            "user",
+            "My MacBook keeps dropping Wi-Fi every few minutes at home. It's really annoying."
+          ],
+          [
+            "agent",
+            "[diagnose] To gather detailed information about the Wi-Fi configuration and potential issues\n\nRun this and paste the output:\n\n```bash\nsudo wdutil info\n```\n\nI'm looking for: Output indicating Wi-Fi hardware or software problems"
+          ],
+          [
+            "user",
+            "I ran the command. Here's what it said:\n\n```\nWDUtil Info:\n  Wi-Fi: channel 149 (DFS), RSSI -52 (strong signal), PHY mode 802.11ax\n  Airport: \n    Chipset: Apple 802.11ax\n    Firmware: 19.2.2\n    Driver: 2.3.1\n```\n\nLet me know what this means!"
+          ],
+          [
+            "agent",
+            "[answer] **Root cause:** The MacBook is connected to a DFS (Dynamic Frequency Selection) channel, which can be prone to interference and drops, as indicated by the output: \"channel 149 (DFS), RSSI -52 (strong signal)\".\n\n**Fix:**\n```bash\nairport --scan\n```\nThen, manually switch to a non-DFS channel (e.g., channel 36-48) in your router's 5 GHz settings.\n\n**Verify:** Check if the Wi-Fi connection is stable after switching to a non-DFS channel by running `sudo wdutil info` again and verifying that the channel has changed.\n\n**If that doesn't fix it:** Try restarting the router and the MacBook, and then check the Wi-Fi connection again."
+          ]
+        ]
+      },
+      "gpt4o": {
+        "final": "In that case, you might need to access your router's settings through a web browser. Here's how you can do it:\n\n1. Open a web browser on your MacBook.\n2. Enter the default gateway IP address in the address bar. Common addresses are `192.168.0.1` or `192.168.1.1`. You can find the correct address on the back of your router or in the documentation provided by your ISP.\n3. Log in using the admin credentials. These are often printed on the router or provided by your ISP.\n4. Navigate to the Wi-Fi settings section.\n5. Look for options to rename the SSIDs for the 2.4GHz and 5GHz bands. Ensure they have distinct names.\n6. Save the changes and reconnect your MacBook to the preferred network.\n\nIf you're unsure about any step, contacting your ISP's support for guidance might be helpful.",
+        "turns": 5,
+        "transcript": [
+          [
+            "user",
+            "My MacBook keeps dropping Wi-Fi every few minutes at home. It's really annoying."
+          ],
+          [
+            "gpt4o",
+            "Does this issue occur only at home, or have you noticed it happening on other Wi-Fi networks as well?"
+          ],
+          [
+            "user",
+            "It only happens at home."
+          ],
+          [
+            "gpt4o",
+            "Please run the following command in Terminal to gather information about your current Wi-Fi environment and share the output:\n\n```bash\n/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport -s\n```"
+          ],
+          [
+            "user",
+            "I'm not sure what to do with Terminal, but I'll try running that command. Here's what it said:\n\n```\n    SSID:BELL-5G-2.4GHz [AirPort]\n    BSSID: 00:11:22:33:44:55\n    RSSI: -52\n    channel: 149\n    RSSI: -52\n    channel: 149\n    (repeated several times)\n```"
+          ],
+          [
+            "gpt4o",
+            "It seems like your MacBook is connected to a 5GHz network, but the SSID name suggests it might be a 2.4GHz network. This could indicate a configuration issue with your router or interference on the 5GHz band.\n\nCould you check your router settings to ensure that the SSID names for the 2.4GHz and 5GHz bands are distinct? This can help your MacBook connect to the correct band without confusion."
+          ],
+          [
+            "user",
+            "I'm not really sure how to check the router settings. I just use the app that came with the router to set it up. I don't think I've ever looked at the settings in there."
+          ],
+          [
+            "gpt4o",
+            "In that case, try the following steps using your router's app:\n\n1. Open the router app on your device.\n2. Look for a section related to Wi-Fi settings or network settings.\n3. Check if there are separate SSID names for the 2.4GHz and 5GHz bands. If they are the same, rename one of them to differentiate between the two bands (e.g., \"BELL-2.4GHz\" and \"BELL-5GHz\").\n4. Save the changes and reconnect your MacBook to the preferred network.\n\nIf you need further assistance, the app should have a help section or support contact information."
+          ],
+          [
+            "user",
+            "I'm not sure how to do that. I don't have a router app on my MacBook. I'm using the Wi-Fi network provided by my internet service provider."
+          ],
+          [
+            "gpt4o",
+            "In that case, you might need to access your router's settings through a web browser. Here's how you can do it:\n\n1. Open a web browser on your MacBook.\n2. Enter the default gateway IP address in the address bar. Common addresses are `192.168.0.1` or `192.168.1.1`. You can find the correct address on the back of your router or in the documentation provided by your ISP.\n3. Log in using the admin credentials. These are often printed on the router or provided by your ISP.\n4. Navigate to the Wi-Fi settings section.\n5. Look for options to rename the SSIDs for the 2.4GHz and 5GHz bands. Ensure they have distinct names.\n6. Save the changes and reconnect your MacBook to the preferred network.\n\nIf you're unsure about any step, contacting your ISP's support for guidance might be helpful."
+          ]
+        ]
+      },
+      "verdicts": {
+        "agent": {
+          "gptoss": {
+            "resolved": true,
+            "reason": "Assistant correctly identified the DFS channel (149) as the cause and advised changing the router to a non‑DFS 5 GHz channel (e.g., 36‑48)."
+          },
+          "qwen": {
+            "resolved": true,
+            "reason": "Assistant correctly identified DFS channel 149 as the root cause and provided actionable steps to switch to non-DFS channels (36-48) in the router settings."
+          }
+        },
+        "gpt4o": {
+          "gptoss": {
+            "resolved": false,
+            "reason": "Assistant gave generic steps to rename SSIDs, not addressing the DFS channel issue or changing to a non-DFS channel."
+          },
+          "qwen": {
+            "resolved": false,
+            "reason": "Assistant incorrectly focused on renaming SSIDs instead of addressing DFS channel 149 and changing to non-DFS 5GHz channels (36-48) as required."
+          }
+        }
+      }
+    },
+    {
+      "scenario": {
+        "id": "battery_assertion",
+        "symptom": "My MacBook battery drains overnight even when it's closed and asleep in my bag.",
+        "macos_version": "14",
+        "chip": "apple_silicon",
+        "root_cause": "A process is holding a power assertion preventing sleep (PreventUserIdleSystemSleep by 'bird', the iCloud daemon).",
+        "system_state": {
+          "pmset -g assertions": "PreventUserIdleSystemSleep 1 held by 'bird' (com.apple.bird)",
+          "pmset -g log / sleep wake": "system repeatedly wakes with 'Wake reason: bird' and fails to enter standby",
+          "facts": "Sonoma 14.5, M3. Battery Settings look normal. Closing the lid does not stop the drain."
+        },
+        "correct_fix": "The iCloud sync daemon (bird) is blocking sleep — sign out/in of iCloud (or restart bird) to clear the stuck assertion.",
+        "tags": []
+      },
+      "agent": {
+        "final": "**Root cause:** The `PreventUserIdleSystemSleep` assertion is being held by the process 'bird' (com.apple.bird), as shown in the output: `PreventUserIdleSystemSleep 1 held by 'bird' (com.apple.bird)`, which is preventing the MacBook from sleeping properly.\n\n**Fix:**\n```bash\nsudo pmset -a disablesleep 0\n```\nThen, to specifically address the 'bird' process, you may need to disable or remove it. Since the 'bird' process is related to Apple's internal services, it's recommended to reset the System Management Controller (SMC) and the Power Management Unit (PMU) by shutting down your MacBook, locating the following keys, and then pressing the power button: \n```bash\n# No specific command, follow these steps instead:\n# 1. Shut down your MacBook.\n# 2. Locate the following keys: Power button, Command (⌘) + Option (⌥) + Shift (⇧) + Power button.\n# 3. Press the Power button, then immediately press and hold Command (⌘) + Option (⌥) + Shift (⇧) + Power button.\n# 4. Hold these keys for 10 seconds.\n# 5. Release the keys and press the Power button again to turn on your MacBook.\n```\n**Verify:** After resetting the SMC and PMU, check if the MacBook can sleep properly by closing the lid and waiting for some time. If the issue persists, check the `pmset -g assertions` output to see if the `PreventUserIdleSystemSleep` assertion is still being held by any process.\n\n**If that doesn't fix it:** Try resetting the NVRAM by shutting down your MacBook, locating the following keys, and then pressing the power button: \n```bash\n# No specific command, follow these steps instead:\n# 1. Shut down your MacBook.\n# 2. Locate the following keys: Power button, Command (⌘) + Option (⌥) + P + R.\n# 3. Press the Power button, then immediately press and hold Command (⌘) + Option (⌥) + P + R.\n# 4. Hold these keys for 20 seconds.\n# 5. Release the keys and let your MacBook boot normally.\n```",
+        "turns": 2,
+        "transcript": [
+          [
+            "user",
+            "My MacBook battery drains overnight even when it's closed and asleep in my bag."
+          ],
+          [
+            "agent",
+            "[diagnose] To determine if any system or application assertions are preventing the MacBook from sleeping properly\n\nRun this and paste the output:\n\n```bash\npmset -g assertions\n```\n\nI'm looking for: Assertions that may be causing the battery to drain, such as 'PreventSystemSleep' or 'PreventIdleSystemSleep'"
+          ],
+          [
+            "user",
+            "Here's the output:\n\n```bash\n PreventUserIdleSystemSleep 1 held by 'bird' (com.apple.bird)\n```"
+          ],
+          [
+            "agent",
+            "[answer] **Root cause:** The `PreventUserIdleSystemSleep` assertion is being held by the process 'bird' (com.apple.bird), as shown in the output: `PreventUserIdleSystemSleep 1 held by 'bird' (com.apple.bird)`, which is preventing the MacBook from sleeping properly.\n\n**Fix:**\n```bash\nsudo pmset -a disablesleep 0\n```\nThen, to specifically address the 'bird' process, you may need to disable or remove it. Since the 'bird' process is related to Apple's internal services, it's recommended to reset the System Management Controller (SMC) and the Power Management Unit (PMU) by shutting down your MacBook, locating the following keys, and then pressing the power button: \n```bash\n# No specific command, follow these steps instead:\n# 1. Shut down your MacBook.\n# 2. Locate the following keys: Power button, Command (⌘) + Option (⌥) + Shift (⇧) + Power button.\n# 3. Press the Power button, then immediately press and hold Command (⌘) + Option (⌥) + Shift (⇧) + Power button.\n# 4. Hold these keys for 10 seconds.\n# 5. Release the keys and press the Power button again to turn on your MacBook.\n```\n**Verify:** After resetting the SMC and PMU, check if the MacBook can sleep properly by closing the lid and waiting for some time. If the issue persists, check the `pmset -g assertions` output to see if the `PreventUserIdleSystemSleep` assertion is still being held by any process.\n\n**If that doesn't fix it:** Try resetting the NVRAM by shutting down your MacBook, locating the following keys, and then pressing the power button: \n```bash\n# No specific command, follow these steps instead:\n# 1. Shut down your MacBook.\n# 2. Locate the following keys: Power button, Command (⌘) + Option (⌥) + P + R.\n# 3. Press the Power button, then immediately press and hold Command (⌘) + Option (⌥) + P + R.\n# 4. Hold these keys for 20 seconds.\n# 5. Release the keys and let your MacBook boot normally.\n```"
+          ]
+        ]
+      },
+      "gpt4o": {
+        "final": "Power Nap allows your MacBook to perform certain tasks while it's asleep, which can lead to battery drain. \n\nFIX: Disable Power Nap by unchecking the option in System Preferences > Battery > Battery tab. This should help reduce battery drain when your MacBook is asleep.",
+        "turns": 3,
+        "transcript": [
+          [
+            "user",
+            "My MacBook battery drains overnight even when it's closed and asleep in my bag."
+          ],
+          [
+            "gpt4o",
+            "Does your MacBook have any peripherals connected to it while it's in your bag, such as a mouse, keyboard, or external drive?"
+          ],
+          [
+            "user",
+            "No, nothing's connected. It's just the MacBook in my bag."
+          ],
+          [
+            "gpt4o",
+            "Please check if Power Nap is enabled. You can do this by going to System Preferences > Battery > Battery tab. Let me know if Power Nap is checked."
+          ],
+          [
+            "user",
+            "I checked the Battery tab in System Preferences and Power Nap is turned on."
+          ],
+          [
+            "gpt4o",
+            "Power Nap allows your MacBook to perform certain tasks while it's asleep, which can lead to battery drain. \n\nFIX: Disable Power Nap by unchecking the option in System Preferences > Battery > Battery tab. This should help reduce battery drain when your MacBook is asleep."
+          ]
+        ]
+      },
+      "verdicts": {
+        "agent": {
+          "gptoss": {
+            "resolved": false,
+            "reason": "Assistant identified the bird process but gave unrelated fixes (pmset, SMC/NVRAM resets) instead of signing out/in of iCloud or restarting the bird daemon."
+          },
+          "qwen": {
+            "resolved": false,
+            "reason": "Assistant identified the correct root cause but provided incorrect fixes (disablesleep, SMC/PMU/NVRAM resets) instead of the required iCloud sign-out/restart of"
+          }
+        },
+        "gpt4o": {
+          "gptoss": {
+            "resolved": false,
+            "reason": "Assistant gave unrelated advice about Power Nap, not addressing the bird iCloud daemon assertion."
+          },
+          "qwen": {
+            "resolved": false,
+            "reason": "Assistant suggested disabling Power Nap, but the true cause was the 'bird' iCloud daemon blocking sleep. The fix requires addressing iCloud (sign out/in or rest"
+          }
+        }
+      }
+    },
+    {
+      "scenario": {
+        "id": "disk_snapshots",
+        "symptom": "My disk says it's almost full but I can't find what's using the space. Finder shows way less than the disk usage.",
+        "macos_version": "15",
+        "chip": "apple_silicon",
+        "root_cause": "Local Time Machine APFS snapshots are consuming the 'missing' space.",
+        "system_state": {
+          "tmutil listlocalsnapshots /": "lists ~12 local snapshots com.apple.TimeMachine.* dates over the last week",
+          "diskutil apfs / storage": "APFS container shows large 'purgeable' space; Finder undercounts snapshot space",
+          "facts": "Sequoia 15.5, M2. Time Machine is on. About 80GB unaccounted for."
+        },
+        "correct_fix": "Thin/delete local APFS Time Machine snapshots (tmutil deletelocalsnapshots or thinlocalsnapshots) to reclaim the space.",
+        "tags": []
+      },
+      "agent": {
+        "final": "**Root cause:** The local APFS snapshots are occupying a significant amount of disk space — \"2023-06-20-143012    1.25TB\" and other similar entries, indicating that these snapshots are contributing to the discrepancy in disk usage reports.\n\n**Fix:**\n```bash\nsudo tmutil thinlocalsnapshots / 10000000000 4\n```\nThis command will thin the local snapshots to 4, freeing up space on the disk [Source 1].\n\n**Verify:** Run `tmutil listlocalsnapshots /` again to confirm that the number of snapshots has decreased and the occupied space has been freed.\n\n**If that doesn't fix it:** Check the `diskutil apfs list` output to see if there are any other factors contributing to the discrepancy in disk usage reports, such as \"purgeable space\" [Source 2].",
+        "turns": 3,
+        "transcript": [
+          [
+            "user",
+            "My disk says it's almost full but I can't find what's using the space. Finder shows way less than the disk usage."
+          ],
+          [
+            "agent",
+            "[diagnose] To understand the current disk usage and available space\n\nRun this and paste the output:\n\n```bash\ndf -h\n```\n\nI'm looking for: The 'Avail' and 'Capacity' columns to determine the amount of free space and the overall disk usage"
+          ],
+          [
+            "user",
+            "I ran the command. Here's what it said:\n\n```\nFilesystem     Size   Used  Avail Capacity iused      ifree %iused  Mounted on\n/dev/disk2    931G   831G   91G    91%  235292  4171113    5%   /\ndevfs         184K   184K    0B   100%     600          0  100%   /dev\nmap -hosts       0B    0B    0B   100%       0          0  100%   /net\nmap auto_home   0B    0B    0B   100%       0          0  100%   /net/auto\n```"
+          ],
+          [
+            "agent",
+            "[diagnose] To check for local snapshots that might be occupying disk space\n\nRun this and paste the output:\n\n```bash\ntmutil listlocalsnapshots /\n```\n\nI'm looking for: A list of snapshots and their sizes to determine if they are contributing to the discrepancy in disk usage reports"
+          ],
+          [
+            "user",
+            "Here's the output:\n\n```\nVolume: /\n   Local Snapshots:\n       2023-06-20-143012    1.25TB\n       2023-06-21-104444    1.25TB\n       2023-06-22-143012    1.25TB\n       2023-06-23-104444    1.25TB\n       2023-06-24-143012    1.25TB\n       2023-06-25-104444    1.25TB\n       2023-06-26-143012    1.25TB\n       2023-06-27-104444    1.25TB\n```"
+          ],
+          [
+            "agent",
+            "[answer] **Root cause:** The local APFS snapshots are occupying a significant amount of disk space — \"2023-06-20-143012    1.25TB\" and other similar entries, indicating that these snapshots are contributing to the discrepancy in disk usage reports.\n\n**Fix:**\n```bash\nsudo tmutil thinlocalsnapshots / 10000000000 4\n```\nThis command will thin the local snapshots to 4, freeing up space on the disk [Source 1].\n\n**Verify:** Run `tmutil listlocalsnapshots /` again to confirm that the number of snapshots has decreased and the occupied space has been freed.\n\n**If that doesn't fix it:** Check the `diskutil apfs list` output to see if there are any other factors contributing to the discrepancy in disk usage reports, such as \"purgeable space\" [Source 2]."
+          ]
+        ]
+      },
+      "gpt4o": {
+        "final": "It seems like the `.Trash` directory is taking up a significant amount of space. This directory contains files that have been deleted but not yet permanently removed from your system. Additionally, the `.fseventsd` directory is also using some space, but it's generally related to the file system events and shouldn't be manually altered.\n\nTo free up space, you can empty the Trash. Here's how:\n\n1. Open Finder.\n2. Click on \"Finder\" in the menu bar and select \"Empty Trash.\"\n\nAfter emptying the Trash, check your disk space again to see if it has resolved the issue.\n\nIf the disk space issue persists, you might want to check for other large files or directories, such as backups or caches, that might not be immediately visible.\n\nFIX: Empty the Trash to free up space. If the issue persists, investigate other hidden directories or use a disk space analyzer tool to identify large files.",
+        "turns": 2,
+        "transcript": [
+          [
+            "user",
+            "My disk says it's almost full but I can't find what's using the space. Finder shows way less than the disk usage."
+          ],
+          [
+            "gpt4o",
+            "Could you please open Terminal and run the following command to check for large files and directories, including hidden ones, and share the output?\n\n```bash\nsudo du -hxd 1 / | sort -hr | head -n 20\n```"
+          ],
+          [
+            "user",
+            "I ran the command. Here's the output:\n\n```\n1.5G    /System/Volumes/Data/.Trash\n1.1G    /System/Volumes/Data/.fseventsd\n  93M    /System/Volumes/Data/.Spotlight-V100\n  73M    /System/Volumes/Data/.fseventsd\n  68M    /System/Volumes/Data/.fseventsd\n  56M    /System/Volumes/Data/.fseventsd\n  46M    /System/Volumes/Data/.fseventsd\n  41M    /System/Volumes/Data/.fseventsd\n  36M    /System/Volumes/Data/.fseventsd\n  32M    /System/Volumes/Data/.fseventsd\n  28M    /System/Volumes/Data/.fseventsd\n  24M    /System/Volumes/Data/.fseventsd\n  22M    /System/Volumes/Data/.fseventsd\n  19M    /System/Volumes/Data/.fseventsd\n  17M    /System/Volumes/Data/.fseventsd\n  15M    /System/Volumes/Data/.fseventsd\n  14M    /System/Volumes/Data/.fseventsd\n  13M    /System/Volumes/Data/.fseventsd\n  12M    /System/Volumes/Data/.fseventsd\n  11M    /System/Volumes/Data/.fseventsd\n  10M    /System/Volumes/Data/.fseventsd\n  9.6M    /System/Volumes/Data/.fseventsd\n```"
+          ],
+          [
+            "gpt4o",
+            "It seems like the `.Trash` directory is taking up a significant amount of space. This directory contains files that have been deleted but not yet permanently removed from your system. Additionally, the `.fseventsd` directory is also using some space, but it's generally related to the file system events and shouldn't be manually altered.\n\nTo free up space, you can empty the Trash. Here's how:\n\n1. Open Finder.\n2. Click on \"Finder\" in the menu bar and select \"Empty Trash.\"\n\nAfter emptying the Trash, check your disk space again to see if it has resolved the issue.\n\nIf the disk space issue persists, you might want to check for other large files or directories, such as backups or caches, that might not be immediately visible.\n\nFIX: Empty the Trash to free up space. If the issue persists, investigate other hidden directories or use a disk space analyzer tool to identify large files."
+          ]
+        ]
+      },
+      "verdicts": {
+        "agent": {
+          "gptoss": {
+            "resolved": true,
+            "reason": "Correctly identified local Time Machine APFS snapshots as the cause and gave a proper tmutil thinlocalsnapshots command to delete/thin them"
+          },
+          "qwen": {
+            "resolved": true,
+            "reason": "Assistant correctly identified APFS snapshots as the cause and provided the valid 'tmutil thinlocalsnapshots' command to resolve the issue."
+          }
+        },
+        "gpt4o": {
+          "gptoss": {
+            "resolved": false,
+            "reason": "Assistant misidentified the cause as Trash files and gave unrelated fix; did not address local Time Machine APFS snapshots."
+          },
+          "qwen": {
+            "resolved": false,
+            "reason": "Assistant incorrectly identified .Trash as the cause and suggested emptying Trash, while the true cause was Time Machine APFS snapshots requiring tmutil command"
+          }
+        }
+      }
+    },
+    {
+      "scenario": {
+        "id": "external_display_flicker",
+        "symptom": "My external monitor keeps flickering and sometimes goes black for a second. It's driving me crazy.",
+        "macos_version": "14",
+        "chip": "apple_silicon",
+        "root_cause": "A third-party USB-C hub between the Mac and the display can't sustain the bandwidth; connecting the display directly (or via the original cable) is stable.",
+        "system_state": {
+          "is it one display or all / how is it connected": "one external monitor, connected through a cheap USB-C hub; the built-in screen never flickers",
+          "does it happen with a different cable/port": "when the user plugs the display straight into the Mac with its own cable, the flicker stops completely",
+          "when did it start / what changed": "started when they bought the hub; the display was fine for a year before that",
+          "facts": "Sonoma 14.6, M2 MacBook Pro. Built-in display is fine. Only the external screen flickers."
+        },
+        "correct_fix": "The USB-C hub is the culprit — connect the display directly to the Mac (or use a certified/original cable or a better hub); the flicker stops without any software change.",
+        "tags": [
+          "ask_to_resolve"
+        ]
+      },
+      "agent": {
+        "final": "To address the flickering issue with your external monitor connected via a USB-C hub, you should try resetting the NVRAM (non-volatile random-access memory). This can help resolve display-related issues.\n\nUse the following command in Terminal to reset the NVRAM:\n\n```bash\nsudo nvram -c\n```\n\nAfter running this command, restart your Mac to apply the changes.\n\n**If that doesn't fix it:** Check the hub for firmware updates or try a different USB-C hub.",
+        "turns": 2,
+        "transcript": [
+          [
+            "user",
+            "My external monitor keeps flickering and sometimes goes black for a second. It's driving me crazy."
+          ],
+          [
+            "agent",
+            "[clarify] To pin this down (so I can give you the exact fix, not a guess), a couple of quick questions:\n\n1. Are you using a VGA or HDMI connection to the external monitor?\n2. Does the issue occur when the MacBook is plugged into power or only on battery?\n3. Have you tried a different cable or adapter to rule out a hardware issue?"
+          ],
+          [
+            "user",
+            "I'm using a USB-C connection through the hub, not VGA or HDMI. The issue happens whether the MacBook is plugged into power or on battery. And yeah, I've already tried plugging the display directly into the MacBook with its own cable, and the flicker stops."
+          ],
+          [
+            "agent",
+            "[answer] To address the flickering issue with your external monitor connected via a USB-C hub, you should try resetting the NVRAM (non-volatile random-access memory). This can help resolve display-related issues.\n\nUse the following command in Terminal to reset the NVRAM:\n\n```bash\nsudo nvram -c\n```\n\nAfter running this command, restart your Mac to apply the changes.\n\n**If that doesn't fix it:** Check the hub for firmware updates or try a different USB-C hub."
+          ]
+        ]
+      },
+      "gpt4o": {
+        "final": "FIX: The flickering issue was likely caused by the USB-C hub. It may not be providing a stable connection or sufficient power for the monitor. To resolve the issue, continue using a direct connection with a USB-C to HDMI or USB-C to DisplayPort cable. If you need to use a hub, consider purchasing a high-quality hub that supports video output and is compatible with your monitor's resolution and refresh rate.",
+        "turns": 3,
+        "transcript": [
+          [
+            "user",
+            "My external monitor keeps flickering and sometimes goes black for a second. It's driving me crazy."
+          ],
+          [
+            "gpt4o",
+            "Is the external monitor connected via HDMI, DisplayPort, or another type of connection?"
+          ],
+          [
+            "user",
+            "It's connected through a USB-C hub. I'm not sure what type of connection it is, but it's through the hub."
+          ],
+          [
+            "gpt4o",
+            "Please try connecting the monitor directly to the Mac using a USB-C to HDMI or USB-C to DisplayPort cable, bypassing the hub. Does the flickering issue persist when connected directly?"
+          ],
+          [
+            "user",
+            "I just plugged it in directly with the Mac's cable and the flicker is completely gone."
+          ],
+          [
+            "gpt4o",
+            "FIX: The flickering issue was likely caused by the USB-C hub. It may not be providing a stable connection or sufficient power for the monitor. To resolve the issue, continue using a direct connection with a USB-C to HDMI or USB-C to DisplayPort cable. If you need to use a hub, consider purchasing a high-quality hub that supports video output and is compatible with your monitor's resolution and refresh rate."
+          ]
+        ]
+      },
+      "verdicts": {
+        "agent": {
+          "gptoss": {
+            "resolved": false,
+            "reason": "Assistant did not identify the bandwidth limitation of the USB‑C hub as the cause and did not recommend connecting the display directly or using a certified cab"
+          },
+          "qwen": {
+            "resolved": false,
+            "reason": "Assistant incorrectly suggested resetting NVRAM (a software fix) instead of directly identifying the USB-C hub as the hardware bottleneck. The correct fix requi"
+          }
+        },
+        "gpt4o": {
+          "gptoss": {
+            "resolved": true,
+            "reason": "Assistant correctly identified the USB‑C hub as the cause and advised using a direct connection or a higher‑quality hub, matching the true fix."
+          },
+          "qwen": {
+            "resolved": true,
+            "reason": "Assistant correctly identified the USB-C hub as the cause and recommended a direct connection or high-quality hub, aligning with the correct fix."
+          }
+        }
+      }
+    }
+  ]
+}

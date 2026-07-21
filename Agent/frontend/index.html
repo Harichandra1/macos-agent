@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>macOS Troubleshooter</title>
+  <script>
+    // Stamp the theme before first paint (no flash): saved choice, else system.
+    (function () {
+      var t = localStorage.getItem("macos_theme");
+      if (t !== "light" && t !== "dark") {
+        t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      }
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Google Identity Services — only used when the backend reports auth enabled -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <div class="grain"></div>
+
+  <header>
+    <div class="header-row">
+      <div class="brand">
+        <div class="eyebrow">Diagnostic Agent</div>
+        <h1>macOS</h1>
+      </div>
+      <div class="header-actions">
+        <!-- credits pill: shown for signed-in users, updated by SSE credits events -->
+        <div id="credits" class="credits-pill" style="display:none"></div>
+        <!-- auth area: filled by app.js from /auth/config (hidden when auth is off) -->
+        <div id="auth" class="auth" style="display:none"></div>
+        <div id="status" class="status" title="backend readiness"><span class="dot"></span>CHECKING…</div>
+        <button id="themetoggle" class="themetoggle" type="button" title="Toggle light/dark theme" aria-label="Toggle theme">
+          <svg class="icon-moon" width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M12 8.6A5.4 5.4 0 0 1 5.4 2 5.4 5.4 0 1 0 12 8.6Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+          <svg class="icon-sun" width="13" height="13" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="2.6" stroke="currentColor" stroke-width="1.3"/><path d="M7 1v1.4M7 11.6V13M13 7h-1.4M2.4 7H1M11.3 2.7l-1 1M3.7 10.3l-1 1M11.3 11.3l-1-1M3.7 3.7l-1-1" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        </button>
+        <button id="newchat" class="newchat" type="button" title="Start over with a clean case file">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1V11M1 6H11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+          New chat
+        </button>
+      </div>
+    </div>
+    <div class="header-rule"></div>
+  </header>
+
+  <main id="chat" class="chat">
+    <div class="msg assistant">
+      <div class="bubble">
+        <div class="answer">Describe your macOS problem — include your macOS version, your Mac's chip
+        (Intel / M1 / M2 / M3), and anything you've already tried. I'll skip the
+        obvious steps and get to the real fix.</div>
+        <div class="suggestions">
+          <button class="suggestion" type="button">Wi-Fi keeps dropping on my M2 MacBook Air</button>
+          <button class="suggestion" type="button">Spotlight indexing stuck at 100% CPU</button>
+          <button class="suggestion" type="button">External display flickering after Sonoma update</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <form id="composer" class="composer">
+    <div class="composer-box">
+      <textarea id="input" rows="1" placeholder="e.g. Wi-Fi drops every 10 min on my M2 MacBook, Sonoma…" autofocus></textarea>
+      <button id="send" type="submit" aria-label="Send">
+        <span class="holo"></span>
+        <span class="sheen"></span>
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M7 11.5V2.5M7 2.5L2.7 6.8M7 2.5L11.3 6.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </form>
+
+  <!-- defines window.liquidGlass; must precede app.js -->
+  <script src="liquid-glass.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

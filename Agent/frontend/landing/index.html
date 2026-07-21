@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A retrieval-grounded macOS troubleshooting agent that escalates from symptoms to the real fix." />
+  <title>macOS Agent — Troubleshooting with depth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="orb orb-a" aria-hidden="true"></div>
+  <div class="orb orb-b" aria-hidden="true"></div>
+
+  <header class="site-header shell">
+    <a class="logo" href="/" aria-label="macOS Agent home">
+      <span class="logo-mark">⌁</span>
+      <span>macOS <em>agent</em></span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#evidence">Evidence</a>
+      <a href="https://github.com/Harichandra1/macos-agent" target="_blank" rel="noreferrer">Source ↗</a>
+      <a class="nav-cta" href="/app">Open the agent <span>→</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero shell">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="pulse"></span> Retrieval-grounded diagnostics</div>
+        <h1>Skip the obvious.<br /><span>Find the real fix.</span></h1>
+        <p class="hero-lede">A focused troubleshooting agent for macOS that remembers what you tried, retrieves the right evidence, and escalates to the solution depth your case needs.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="/app">Try it live <span>↗</span></a>
+          <a class="button button-quiet" href="#how-it-works">See the architecture <span>↓</span></a>
+        </div>
+        <div class="hero-note"><span class="lock">✦</span> No generic reset scripts. Every answer is grounded in a narrow macOS knowledge base.</div>
+      </div>
+      <div class="hero-console" aria-label="Example diagnostic flow">
+        <div class="console-top"><span><i></i><i></i><i></i></span><code>case_file / wifi-dfs-channel</code><b>LIVE</b></div>
+        <div class="console-body">
+          <div class="console-line muted"><span class="line-no">01</span><span class="tag">INTAKE</span> M2 MacBook Air · Sonoma 14.5</div>
+          <div class="console-line"><span class="line-no">02</span><span class="tag blue">RETRIEVE</span> 6 relevant sources found</div>
+          <div class="console-line"><span class="line-no">03</span><span class="tag purple">TRIAGE</span> strong RSSI · DFS channel 149</div>
+          <div class="console-divider"></div>
+          <div class="console-answer"><span class="answer-mark">→</span><div><small>ROOT CAUSE IDENTIFIED</small><strong>Radar events force channel changes.</strong><p>Move the router's 5 GHz band off DFS range (36–48).</p></div></div>
+          <div class="console-footer"><span><span class="tiny-dot"></span> grounded in KB</span><span>turn 02 / 02</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="proof-strip shell" id="evidence">
+      <div class="proof-label">A small system<br />with a sharp thesis</div>
+      <div class="proof-stat"><strong id="resolution-stat">2 / 4</strong><span>interactive cases resolved</span></div>
+      <div class="proof-stat"><strong id="turn-stat">2.25</strong><span>average turns to resolution</span></div>
+      <div class="proof-stat"><strong id="frontier-stat">+25 pts</strong><span>resolution lift vs GPT-4o</span></div>
+      <div class="proof-source">From the checked-in<br /><code>interactive_report.json</code></div>
+    </section>
+
+    <section class="section shell" id="how-it-works">
+      <div class="section-heading">
+        <div class="eyebrow">01 / The system</div>
+        <h2>Depth is the product.</h2>
+        <p>Raw model size is replaceable. The durable advantage is a clean knowledge base, a case file that accumulates context, and a graph that knows when to go deeper.</p>
+      </div>
+      <div class="architecture" aria-label="macOS Agent architecture">
+        <div class="arch-row arch-user">
+          <div class="arch-node user-node"><span class="node-icon">⌘</span><b>Browser</b><small>chat + SSE</small></div>
+          <div class="arrow">→</div>
+          <div class="arch-node api-node"><span class="node-label">API</span><b>FastAPI</b><small>auth · guardrails · credits</small></div>
+          <div class="arrow">→</div>
+          <div class="arch-node graph-node"><span class="node-label">CORE</span><b>LangGraph</b><small>retrieve · decide · verify</small></div>
+        </div>
+        <div class="arch-branches">
+          <div class="branch-line"></div>
+          <div class="arch-node small-node"><span class="node-label green">KB</span><b>Qdrant</b><small>41k+ chunks</small></div>
+          <div class="arch-node small-node"><span class="node-label amber">WEB</span><b>Tavily</b><small>Apple-only fallback</small></div>
+          <div class="arch-node small-node"><span class="node-label pink">LLM</span><b>Provider failover</b><small>Groq · NVIDIA · OpenRouter</small></div>
+        </div>
+        <div class="arch-footer">
+          <div class="arch-node wide-node"><span class="node-label orange">STATE</span><b>Managed Postgres</b><small>users · credits · feedback · durable conversation memory</small></div>
+          <div class="arch-node wide-node"><span class="node-label cyan">OBS</span><b>Prometheus + Grafana</b><small>cost · tokens · errors · feedback</small></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section split-section shell">
+      <div class="section-heading compact">
+        <div class="eyebrow">02 / Why it feels different</div>
+        <h2>It keeps the case open.</h2>
+        <p>The agent does not restart from “have you tried turning it off and on?” Each turn updates the case file and uses the last result to choose the next diagnostic step.</p>
+        <a class="text-link" href="/app">Start a troubleshooting session <span>→</span></a>
+      </div>
+      <div class="memory-card">
+        <div class="memory-top"><span>CASE FILE</span><code>thread_id: 7c4e…</code></div>
+        <div class="memory-item"><span class="memory-dot active"></span><div><small>KNOWN</small><b>M2 MacBook Air · macOS 14.5</b></div></div>
+        <div class="memory-item"><span class="memory-dot"></span><div><small>TRIED</small><b>Restarted router and renewed DHCP lease</b></div></div>
+        <div class="memory-item"><span class="memory-dot next"></span><div><small>NEXT SIGNAL</small><b>Inspect channel switch announcements</b></div></div>
+        <div class="memory-summary"><span>SUMMARY</span><p>Strong signal. Failure repeats every few minutes. Escalating from connectivity basics to radio-level evidence.</p></div>
+      </div>
+    </section>
+
+    <section class="section metrics-section shell">
+      <div class="metrics-header"><div><div class="eyebrow">03 / Operations</div><h2>Built to be observed.</h2></div><span class="live-badge"><i></i> GRAFANA CONNECTED</span></div>
+      <div class="metrics-grid">
+        <div class="metric-card"><small>REQUESTS</small><strong id="metric-requests">—</strong><span>total chat turns</span><div class="spark spark-blue"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="metric-card"><small>SUCCESS RATE</small><strong id="metric-success">—</strong><span>completed requests</span><div class="spark spark-green"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="metric-card"><small>PROVIDER COST</small><strong id="metric-cost">—</strong><span>tracked in Postgres</span><div class="metric-line"></div></div>
+        <div class="metric-card"><small>BACKEND</small><strong id="metric-health">checking</strong><span id="metric-health-note">GET /health</span><div class="health-line"><i></i><i></i><i></i><i></i></div></div>
+      </div>
+      <p class="metrics-footnote">Operational counters stay private and flow to Grafana Cloud. Exact billing truth remains in the Postgres usage ledger.</p>
+    </section>
+
+    <section class="section stack-section shell">
+      <div class="section-heading compact"><div class="eyebrow">04 / The stack</div><h2>Small pieces.<br />Clear boundaries.</h2></div>
+      <div class="stack-list">
+        <div><span>01</span><b>Python + FastAPI</b><small>typed settings · SSE · OAuth</small></div>
+        <div><span>02</span><b>LangGraph</b><small>stateful diagnosis graph</small></div>
+        <div><span>03</span><b>Qdrant + Tavily</b><small>deep KB · guarded web fallback</small></div>
+        <div><span>04</span><b>Postgres</b><small>one durable state layer</small></div>
+        <div><span>05</span><b>Prometheus + Grafana</b><small>metrics you can act on</small></div>
+      </div>
+    </section>
+
+    <section class="closing shell">
+      <div class="eyebrow">Ready when the obvious steps are over</div>
+      <h2>Give it the problem<br /><span>you've been avoiding.</span></h2>
+      <a class="button button-primary" href="/app">Open macOS Agent <span>↗</span></a>
+    </section>
+  </main>
+
+  <footer class="site-footer shell"><span>macOS agent / v3</span><span>Built as a focused RAG systems project</span><span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="https://github.com/Harichandra1/macos-agent" target="_blank" rel="noreferrer">View source ↗</a></span></footer>
+  <script src="app.js"></script>
+</body>
+</html>

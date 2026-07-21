@@ -1,0 +1,608 @@
+/* macOS Troubleshooter — "Diagnostic Agent" theme (from macOS Troubleshooter.dc.html)
+   Dark, dimensional: layered accent glows + grain, JetBrains Mono, flat assistant
+   messages, pill-gradient surfaces, terminal-style code cards, holo send button. */
+
+/* Theme tokens (from macOS Troubleshooter.dc.html — dark + light palettes).
+   The <head> inline script always stamps data-theme on <html> (localStorage,
+   else system preference), so the light block only needs one selector. */
+:root {
+  color-scheme: dark;
+  --bg: oklch(0.14 0.008 265);
+  --bg-elev: oklch(0.19 0.01 265);
+  --bg-elev2: oklch(0.24 0.012 265);
+  --border: oklch(1 0 0 / 0.09);
+  --text: oklch(0.94 0.006 90);
+  --muted: oklch(0.58 0.016 265);
+  --secondary: oklch(0.82 0.01 265);
+  --accent: #7C8CF0;
+  --ok: oklch(0.72 0.13 150);
+  --warn: oklch(0.78 0.12 70);
+  --code-bg: oklch(0.10 0.006 265);
+  --pill-grad: linear-gradient(180deg, oklch(0.21 0.012 265), oklch(0.185 0.01 265));
+  --shadow-sm: 0 1px 0 rgba(255,255,255,0.04) inset, 0 4px 10px -4px rgba(0,0,0,0.5);
+  --shadow-md: 0 1px 0 rgba(255,255,255,0.05) inset, 0 12px 28px -18px rgba(0,0,0,0.55), 0 3px 10px -6px rgba(0,0,0,0.40);
+  --shadow-lift: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 24px -10px rgba(0,0,0,0.55);
+  --ok-bg: color-mix(in srgb, oklch(0.72 0.13 150) 14%, transparent);
+  --warn-bg: color-mix(in srgb, oklch(0.78 0.12 70) 14%, transparent);
+  --glow1: radial-gradient(1200px 800px at 88% -10%, color-mix(in srgb, var(--accent) 42%, transparent) 0%, transparent 62%);
+  --glow2: radial-gradient(1000px 700px at 4% 112%, color-mix(in srgb, oklch(0.78 0.16 70) 30%, transparent) 0%, transparent 68%);
+  /* theme-aware scrim over chatBackdrop.png. Only the header text sits directly
+     on the backdrop, so the top band stays dark for legibility; below it the
+     wash pulls back hard so the graded sky reads through the glass bubbles.
+     Bubbles carry their own tint now, so the scrim no longer has to protect
+     their text — that's what lets the middle open up this far. */
+  --scrim: linear-gradient(180deg, rgba(9,12,22,0.72) 0%, rgba(9,12,22,0.52) 16%, rgba(10,13,26,0.28) 46%, rgba(9,11,20,0.52) 100%);
+  /* Grading applied to the photo itself (body::before), not the whole page —
+     punchier sky = something for the glass rim to actually refract. */
+  --backdrop-contrast: 1.24;
+  --backdrop-saturate: 1.18;
+  --backdrop-brightness: 0.90;
+  --grain-opacity: 0.06;
+  --send-border: rgba(255,255,255,0.3);
+  --code-dim: rgba(0,0,0,0.25);
+
+  /* --- glass ---------------------------------------------------------------
+     Tint has to stay light or there is nothing to see through — legibility
+     comes from the backdrop blur, not from opacity. (This is what made the
+     first pass read as a flat card.) `strong` is a nudge for the assistant
+     bubble, which carries dense content. --glass-blur/-saturate drive the
+     assistant bubble directly; on user bubbles liquidGlass() overrides them. */
+  --glass-tint: linear-gradient(180deg, rgba(12,14,24,0.18), rgba(12,14,24,0.32));
+  --glass-tint-strong: linear-gradient(180deg, rgba(12,14,24,0.28), rgba(10,12,20,0.42));
+  --glass-edge: rgba(255,255,255,0.13);
+  --glass-spec: rgba(255,255,255,0.55);
+  --glass-inner: rgba(255,255,255,0.06);
+  /* surfaces sitting ON the glass (chips, suggestion pills, source panel).
+     Opaque fills here read as paper stuck to the pane — keep them translucent
+     so the refracted backdrop still shows through. */
+  --glass-inset-bg: rgba(255,255,255,0.09);
+  --glass-inset-bg-hover: rgba(255,255,255,0.15);
+  --glass-inset-edge: rgba(255,255,255,0.18);
+  --glass-blur: 18px;
+  --glass-saturate: 1.5;
+  /* Every outer shadow carries a negative spread. Without one, a 60px blur
+     bleeds ~60px past the panel in all directions, which is invisible on the
+     near-black background the reference card was designed against but reads as
+     a grey rectangular smudge over a photo backdrop. Spread pulls the shadow
+     back under the panel so it grounds the glass instead of dirtying the sky. */
+  --shadow-glass:
+    0 8px 20px -10px rgba(0,0,0,0.45),
+    0 20px 40px -26px rgba(0,0,0,0.40),
+    inset 0 1px 1px var(--glass-spec),
+    inset 0 -8px 20px var(--glass-inner),
+    inset 0 0 0 1px var(--glass-edge);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: oklch(0.97 0.012 80);
+  --bg-elev: oklch(0.99 0.008 80);
+  --bg-elev2: oklch(0.93 0.014 80);
+  --border: oklch(0 0 0 / 0.09);
+  --text: oklch(0.2 0.012 60);
+  --muted: oklch(0.48 0.016 60);
+  --secondary: oklch(0.48 0.016 60);
+  --ok: oklch(0.5 0.13 150);
+  --warn: oklch(0.56 0.13 70);
+  --code-bg: oklch(0.94 0.012 80);
+  --pill-grad: linear-gradient(180deg, oklch(1 0.006 80), oklch(0.965 0.01 80));
+  --shadow-sm: 0 1px 0 rgba(255,255,255,0.6) inset, 0 4px 10px -4px rgba(0,0,0,0.12);
+  --shadow-md: 0 1px 0 rgba(255,255,255,0.7) inset, 0 12px 28px -18px rgba(28,40,70,0.22), 0 3px 10px -6px rgba(28,40,70,0.16);
+  --shadow-lift: 0 1px 0 rgba(255,255,255,0.7) inset, 0 8px 18px -8px rgba(0,0,0,0.14);
+  --ok-bg: color-mix(in srgb, oklch(0.5 0.13 150) 12%, transparent);
+  --warn-bg: color-mix(in srgb, oklch(0.56 0.13 70) 12%, transparent);
+  --glow1: radial-gradient(1200px 800px at 88% -10%, color-mix(in srgb, var(--accent) 24%, transparent) 0%, transparent 62%);
+  --glow2: radial-gradient(1000px 700px at 4% 112%, color-mix(in srgb, oklch(0.7 0.16 70) 18%, transparent) 0%, transparent 68%);
+  /* Light: a soft pastel wash — a touch stronger under the header (dark text),
+     opening up in the middle so the sky stays airy/visible behind the glass. */
+  --scrim: linear-gradient(180deg, rgba(247,250,255,0.62) 0%, rgba(246,249,255,0.32) 42%, rgba(245,248,255,0.46) 100%);
+  /* Gentler than dark: a bright photo clips to white if you push contrast. */
+  --backdrop-contrast: 1.14;
+  --backdrop-saturate: 1.10;
+  --backdrop-brightness: 1.02;
+  --grain-opacity: 0.04;
+  --send-border: rgba(0,0,0,0.12);
+  --code-dim: rgba(0,0,0,0.07);
+
+  /* Light glass: white tint instead of dark, and the drop shadow tints blue-
+     grey rather than black so it doesn't read as dirt on a bright backdrop.
+     Runs a little heavier than dark (dark text over a bright sky needs more
+     veil) but still well under the point where the refraction disappears. */
+  --glass-tint: linear-gradient(180deg, rgba(255,255,255,0.30), rgba(255,255,255,0.44));
+  --glass-tint-strong: linear-gradient(180deg, rgba(255,255,255,0.46), rgba(255,255,255,0.60));
+  --glass-edge: rgba(255,255,255,0.65);
+  --glass-spec: rgba(255,255,255,1);
+  --glass-inner: rgba(255,255,255,0.30);
+  --glass-inset-bg: rgba(255,255,255,0.34);
+  --glass-inset-bg-hover: rgba(255,255,255,0.52);
+  --glass-inset-edge: rgba(255,255,255,0.65);
+  --glass-blur: 18px;
+  --glass-saturate: 1.4;
+  --shadow-glass:
+    0 8px 20px -10px rgba(28,40,70,0.30),
+    0 20px 40px -26px rgba(28,40,70,0.24),
+    inset 0 1px 1px var(--glass-spec),
+    inset 0 -8px 20px var(--glass-inner),
+    inset 0 0 0 1px var(--glass-edge);
+}
+
+* { box-sizing: border-box; }
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+
+body {
+  margin: 0;
+  font-family: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  background: var(--bg);   /* fallback under the backdrop layers below */
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  transition: background 250ms ease, color 250ms ease;
+}
+
+/* Backdrop, in two fixed layers behind everything (both are position:fixed, so
+   they sit out of body's flex flow and don't need to be flex items).
+   Split in two on purpose: the colour grade below must hit only the photo. On
+   the old single-background body, `filter` would have graded the UI text too,
+   and grading the scrim gradient along with the photo just fights itself.
+   These are siblings of .chat, never ancestors — an ancestor with `filter`
+   would become a backdrop root and blank out the bubbles' backdrop-filter. */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;            /* under .grain (1) and the UI (2) */
+  pointer-events: none;
+}
+body::before {
+  background: url("chatBackdrop1.png") center center / cover no-repeat;
+  filter:
+    contrast(var(--backdrop-contrast))
+    saturate(var(--backdrop-saturate))
+    brightness(var(--backdrop-brightness));
+}
+body::after {
+  background: var(--scrim);   /* paints over ::before: same z-index, later in order */
+}
+
+/* grain overlay */
+.grain {
+  position: fixed; inset: 0; z-index: 1; pointer-events: none;
+  opacity: var(--grain-opacity); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+
+header, .chat, .composer { position: relative; z-index: 2; }
+
+/* ------------------------------------------------------------------ header */
+header {
+  flex-shrink: 0;
+  padding: 22px 32px 0;
+}
+.header-row {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.eyebrow {
+  font-size: 10.5px; font-weight: 600; letter-spacing: 0.16em;
+  color: var(--accent); text-transform: uppercase; margin-bottom: 4px;
+  font-style: italic;
+}
+h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -0.015em; }
+
+.header-actions { display: flex; align-items: center; gap: 8px; }
+
+.status {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 12px; font-size: 11px; font-weight: 500;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+.status .dot { width: 6px; height: 6px; border-radius: 999px; background: var(--muted); }
+.status.ok .dot { background: var(--ok); box-shadow: 0 0 6px var(--ok); }
+.status.bad .dot { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.status.ok { color: var(--muted); }
+.status.bad { color: var(--warn); }
+
+.feedback {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.feedback-label {
+  font-size: 11px; letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--muted);
+}
+.fb-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; padding: 0;
+  color: var(--muted); background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 8px;
+  cursor: pointer; transition: all 160ms ease;
+}
+.fb-btn:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.fb-btn.picked { color: var(--accent); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
+.auth { display: flex; align-items: center; gap: 8px; }
+.credits-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px; font-size: 11px; font-weight: 500;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted);
+  background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+}
+.credits-pill b { color: var(--text); }
+.credits-pill.low { color: var(--warn); }
+.credits-pill.low b { color: var(--warn); }
+.auth-email {
+  display: flex; align-items: center;
+  padding: 7px 12px; font-size: 11px; font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.signout {
+  display: flex; align-items: center;
+  font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text); background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer;
+  transition: all 180ms ease; box-shadow: var(--shadow-sm);
+}
+.signout:hover { border-color: var(--warn); color: var(--warn); transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+
+.newchat {
+  display: flex; align-items: center; gap: 7px;
+  font-family: inherit; font-size: 11px; font-weight: 500; letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text); background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 7px 14px; cursor: pointer;
+  transition: all 180ms ease; box-shadow: var(--shadow-sm);
+}
+.newchat:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+
+.themetoggle {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px;
+  color: var(--muted); background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 999px;
+  cursor: pointer; transition: all 180ms ease; box-shadow: var(--shadow-sm);
+  padding: 0;
+}
+.themetoggle:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); box-shadow: var(--shadow-lift); }
+/* show the icon of the mode you'd switch TO */
+.themetoggle .icon-sun { display: none; }
+.themetoggle .icon-moon { display: block; }
+:root[data-theme="light"] .themetoggle .icon-sun { display: block; }
+:root[data-theme="light"] .themetoggle .icon-moon { display: none; }
+
+.header-rule {
+  margin-top: 18px; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border) 15%, var(--border) 85%, transparent);
+}
+
+/* -------------------------------------------------------------------- chat */
+.chat {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 44px;
+  max-width: 768px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 44px 24px 64px;
+}
+
+.msg {
+  display: flex;
+  /* `backwards`, not `both`: `both` would leave transform:translateY(0)scale(1)
+     applied forever, and a transformed ancestor is a hazard for the bubbles'
+     backdrop-filter. Reverting to transform:none at the end costs nothing
+     visually — the last keyframe is already the identity transform. */
+  animation: bubbleRise 320ms cubic-bezier(.2,.8,.2,1) backwards;
+}
+.msg.user { justify-content: flex-end; }
+.msg.assistant { justify-content: flex-start; }
+
+/* Deliberately no opacity fade. An ancestor at opacity < 1 forms a backdrop
+   root, which blanks out a descendant's backdrop-filter — the bubble would
+   render flat for 320ms and then snap into glass. Slide + scale alone reads
+   just as well and keeps the refraction live from the first frame. */
+@keyframes bubbleRise {
+  from { transform: translateY(10px) scale(.98); }
+  to   { transform: translateY(0) scale(1); }
+}
+
+/* Both message types are refracting glass panels over the backdrop photo: a
+   translucent tint, a 1px rim, a top specular highlight, and a deep ambient
+   shadow. The rim/highlight come from inset shadows rather than `border`, so
+   the glass edge sits inside the backdrop-filter's clip and reads as part of
+   the pane.
+
+   liquidGlass() (app.js) overwrites backdrop-filter inline with its SVG
+   displacement filter. The plain blur declared here is what you get if that
+   script fails to load; Safari/Firefox get the library's own frosted fallback. */
+.msg .bubble {
+  position: relative; z-index: 1;
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--shadow-glass);
+  word-wrap: break-word;
+}
+
+.msg.user .bubble {
+  max-width: 70%;
+  background: var(--glass-tint);
+  color: var(--text);
+  padding: 12px 17px;
+  /* liquidGlass() reads border-radius to shape its displacement map, off the
+     top-left corner. Keep the tail corner close to it so the map and the
+     element's actual clip don't visibly disagree at that corner. */
+  border-radius: 18px;
+  border-bottom-right-radius: 6px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.msg.assistant .bubble {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--glass-tint-strong);
+  border-radius: 18px;
+  padding: 19px 21px;
+}
+
+.answer { font-size: 14.5px; line-height: 1.85; color: var(--text); }
+.answer p { margin: 0 0 12px; }
+.answer p:last-child { margin-bottom: 0; }
+.answer code {
+  font-family: inherit; font-size: 12.5px;
+  background: var(--glass-inset-bg); border: 1px solid var(--glass-inset-edge);
+  padding: 1px 5px; border-radius: 5px;
+}
+
+/* welcome suggestions */
+.suggestions { display: flex; flex-direction: column; gap: 7px; margin-top: 2px; }
+.suggestion {
+  text-align: left; font-family: inherit; font-size: 12.5px;
+  color: var(--secondary);
+  background: var(--glass-inset-bg); border: 1px solid var(--glass-inset-edge);
+  border-radius: 8px; padding: 10px 14px; cursor: pointer;
+  transition: all 180ms ease; width: fit-content;
+}
+.suggestion:hover {
+  border-color: var(--accent); color: var(--text);
+  background: var(--glass-inset-bg-hover);
+  transform: translateY(-1px);
+}
+
+/* intake chips */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 11.5px; color: var(--muted);
+  background: var(--glass-inset-bg); border: 1px solid var(--glass-inset-edge);
+  padding: 4px 10px; border-radius: 6px;
+}
+.chip b { color: var(--text); font-weight: 600; }
+
+/* turn marker: dash + uppercase label */
+.turn-marker {
+  display: flex; align-items: center; gap: 10px; align-self: flex-start;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.turn-marker .dash { width: 14px; height: 1px; background: currentColor; }
+.turn-marker.ask  { color: var(--accent); }
+.turn-marker.diag { color: var(--warn); }
+
+/* quick-reply chips under a clarifying question */
+.qchips { display: flex; flex-direction: column; gap: 12px; }
+.qchip-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.qchip-label { font-size: 11.5px; color: var(--muted); width: 100%; }
+.qchip {
+  font-family: inherit; font-size: 12px; color: var(--text);
+  background: var(--glass-inset-bg); border: 1px solid var(--glass-inset-edge);
+  border-radius: 7px; padding: 7px 14px; cursor: pointer;
+  transition: all 180ms ease;
+}
+.qchip:hover {
+  border-color: var(--accent); color: var(--accent);
+  background: var(--glass-inset-bg-hover); transform: translateY(-1px);
+}
+.qchip.picked { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* terminal-style code card (built by decorateCodeBlocks) */
+.bubble pre {
+  margin: 0; padding: 16px 18px;
+  font-family: inherit; font-size: 12.5px; line-height: 1.7;
+  color: var(--text); white-space: pre; overflow-x: auto;
+  background: transparent; border: none;
+}
+.code-card {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin: 8px 0;
+}
+.code-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; border-bottom: 1px solid var(--border);
+}
+.code-dots { display: flex; align-items: center; gap: 6px; }
+.code-dots i {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--muted); opacity: 0.35; display: inline-block;
+}
+.code-title { font-size: 11px; color: var(--muted); margin-left: 8px; letter-spacing: 0.02em; }
+
+/* diagnostic-request code card: pulsing "awaiting your output" indicator
+   instead of the plain static dots, persists through the chat history until
+   the user pastes the output in a new message. */
+.code-dots.pulsing { gap: 8px; }
+.pulse-dot {
+  width: 8px; height: 8px; border-radius: 999px;
+  background: var(--warn); display: inline-block;
+  animation: pulseDot 1.4s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 6px var(--warn); }
+}
+.code-title.pulsing { color: var(--warn); font-weight: 600; }
+
+/* PURPOSE / LOOKING FOR captions around a diagnostic's code card */
+.cmd-caption {
+  font-size: 12.5px; line-height: 1.6; color: var(--secondary);
+}
+.cmd-caption-label {
+  display: block; font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 4px;
+}
+.cmd-purpose { margin-bottom: -4px; }
+.cmd-lookfor { margin-top: -4px; }
+
+.copy-btn {
+  display: flex; align-items: center; gap: 5px;
+  font-family: inherit; font-size: 10.5px; letter-spacing: 0.04em;
+  color: var(--muted); background: var(--bg-elev2);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 3px 9px; cursor: pointer;
+}
+.copy-btn:hover { color: var(--text); }
+
+/* sources */
+.sources summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted);
+}
+.sources summary::-webkit-details-marker { display: none; }
+.sources summary svg { transition: transform 180ms ease; }
+.sources[open] summary svg { transform: rotate(180deg); }
+.source-panel {
+  display: flex; flex-direction: column; margin-top: 14px;
+  background: var(--glass-inset-bg);
+  border: 1px solid var(--glass-inset-edge); border-radius: 10px;
+  padding: 4px 16px;
+}
+.source-item { padding: 14px 0; border-top: 1px solid var(--glass-inset-edge); }
+.source-item:first-child { border-top: none; }
+.source-head { display: flex; align-items: center; gap: 8px; }
+.badge {
+  font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 4px;
+}
+.badge.kb  { color: var(--ok);     border: 1px solid color-mix(in srgb, var(--ok) 40%, transparent); }
+.badge.web { color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.source-item a { font-size: 13px; color: var(--accent); text-decoration: none; }
+.source-item a:hover { text-decoration: underline; }
+.source-meta { font-size: 11px; color: var(--muted); margin-top: 5px; letter-spacing: 0.01em; }
+.source-snippet { font-size: 12px; color: var(--muted); margin-top: 5px; line-height: 1.6; }
+
+/* verification pill */
+.verify {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 11.5px; letter-spacing: 0.02em; text-transform: uppercase;
+  padding: 7px 13px; border-radius: 8px; width: fit-content;
+}
+.verify.ok   { color: var(--ok);   background: var(--ok-bg);   border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
+.verify.warn { color: var(--warn); background: var(--warn-bg); border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+.verify code { font-family: inherit; text-transform: none; background: var(--code-dim); padding: 1px 4px; border-radius: 4px; }
+
+/* progress line shown while the agent works */
+.stage {
+  font-size: 12px; color: var(--muted); letter-spacing: 0.04em;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: .45; } }
+
+.cursor::after {
+  content: "▋"; color: var(--accent);
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------------------------------------------------------------- composer */
+.composer {
+  flex-shrink: 0;
+  padding: 16px 24px 26px;
+  display: flex; justify-content: center;
+}
+.composer-box {
+  max-width: 720px; width: 100%;
+  display: flex; align-items: flex-end; gap: 8px;
+  background: var(--pill-grad);
+  border: 1px solid var(--border); border-radius: 14px;
+  padding: 6px 6px 6px 16px;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 200ms ease, border-color 200ms ease;
+}
+.composer-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md), 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+#input {
+  flex: 1; resize: none; border: none; background: transparent; outline: none;
+  color: var(--text); font-family: inherit; font-size: 13.5px;
+  padding: 9px 0; min-height: 22px; max-height: 160px;
+}
+#input::placeholder { color: inherit; opacity: 0.45; }
+
+#send {
+  position: relative; flex-shrink: 0;
+  width: 34px; height: 34px; border-radius: 999px;
+  border: 1px solid var(--send-border);
+  overflow: hidden; cursor: pointer;
+  background: var(--bg-elev2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  transition: transform 220ms cubic-bezier(.34,1.56,.64,1), box-shadow 220ms ease, background 220ms ease;
+  margin-bottom: 3px;
+  animation: sendFloat 3.2s ease-in-out infinite;
+  color: var(--muted);
+}
+#send .holo {
+  position: absolute; inset: 0;
+  background: conic-gradient(from 0deg, #FF6B9D, #7C8CF0, #4CD4B0, #FFD166, #FF6B9D);
+  opacity: 0.25;
+  animation: holoRotate 4s linear infinite;
+}
+#send .sheen {
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 30% 25%, rgba(255,255,255,0.8), transparent 55%);
+  mix-blend-mode: overlay;
+}
+#send svg { position: relative; }
+#send.active {
+  background: var(--accent);
+  color: #0a0a0a;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.18) inset, 0 6px 20px -4px var(--accent), 0 2px 10px rgba(0,0,0,0.4);
+}
+#send.active .holo { opacity: 0.9; }
+#send:hover:not(:disabled) {
+  transform: scale(1.1) translateY(-2px) rotate(-6deg);
+}
+#send.active:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.3) inset, 0 12px 30px -4px var(--accent), 0 4px 14px rgba(0,0,0,0.45);
+}
+#send:disabled { opacity: .55; cursor: not-allowed; }
+
+@keyframes holoRotate { 0% { filter: hue-rotate(0deg) saturate(1.5); } 100% { filter: hue-rotate(360deg) saturate(1.5); } }
+@keyframes sendFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }

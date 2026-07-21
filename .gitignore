@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Credentials — never commit
+.env
+.env.production
+
+# Local desktop/assistant state — never part of the deploy artifact
+.DS_Store
+.claude/
+
+# Oracle deployment runtime state
+deploy/oracle/.env.production
+
+# Qdrant ingestion progress
+vectorDBIngestion/data/knowledge_base/ingest_progress.json
+
+# Agent serving-layer artifacts
+# Keep benchmark_report.json + transcripts.md (the artifacts); drop the caches.
+Agent/eval/results/answers_cache.json
+Agent/eval/results/judgments_cache.json
+*.sqlite
+
+# App database (SQLite dev store — Phase 1)
+Agent/backend/data/

@@ -1,0 +1,32 @@
+[project]
+name = "macosagent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beautifulsoup4>=4.15.0",
+    "requests>=2.34.2",
+    "openai>=1.30",
+    "qdrant-client>=1.9",
+    "python-dotenv>=1.0",
+    "langchain>=0.3",
+    "langchain-groq>=0.2",
+    "langgraph>=0.2",
+    "tavily-python>=0.3",
+    "anthropic>=0.116.0",
+    "groq>=0.37.1",
+    "fastapi>=0.139.0",
+    "uvicorn[standard]>=0.50.0",
+    "pydantic-settings>=2.14.2",
+    "sse-starlette>=3.4.5",
+    "slowapi>=0.1.10",
+    "langchain-openai>=1.3.3",
+    "sqlalchemy>=2.0.51",
+    "alembic>=1.18.5",
+    "google-auth>=2.56.0",
+    "pyjwt>=2.13.0",
+    "prometheus-client>=0.25.0",
+    "psycopg[binary]>=3.3.4",
+    "langgraph-checkpoint-postgres>=3.1.0",
+]

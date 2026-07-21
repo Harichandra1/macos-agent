@@ -1,0 +1,591 @@
+{
+  "summary": {
+    "judges": {
+      "gptoss": {
+        "winrate_vs": {
+          "gpt4o": {
+            "win": 1,
+            "tie": 0,
+            "loss": 5,
+            "n": 6
+          },
+          "llama70b": {
+            "win": 1,
+            "tie": 2,
+            "loss": 3,
+            "n": 6
+          }
+        },
+        "dim_means": {
+          "rag_agent": {
+            "correctness": 1.67,
+            "actionability": 2.67,
+            "depth_triage": 3.67,
+            "grounding": 2.17
+          },
+          "gpt4o": {
+            "correctness": 3.5,
+            "actionability": 4.67,
+            "depth_triage": 4.5,
+            "grounding": 3.83
+          },
+          "llama70b": {
+            "correctness": 2.33,
+            "actionability": 3.5,
+            "depth_triage": 3.83,
+            "grounding": 3.0
+          }
+        },
+        "best_counts": {
+          "rag_agent": 1,
+          "gpt4o": 2,
+          "llama70b": 3
+        }
+      },
+      "qwen": {
+        "winrate_vs": {
+          "gpt4o": {
+            "win": 0,
+            "tie": 0,
+            "loss": 3,
+            "n": 3
+          },
+          "llama70b": {
+            "win": 1,
+            "tie": 0,
+            "loss": 2,
+            "n": 3
+          }
+        },
+        "dim_means": {
+          "rag_agent": {
+            "correctness": 2.33,
+            "actionability": 3.67,
+            "depth_triage": 2.67,
+            "grounding": 2.67
+          },
+          "gpt4o": {
+            "correctness": 3.67,
+            "actionability": 4.33,
+            "depth_triage": 4.0,
+            "grounding": 4.0
+          },
+          "llama70b": {
+            "correctness": 3.33,
+            "actionability": 4.33,
+            "depth_triage": 3.67,
+            "grounding": 3.67
+          }
+        },
+        "best_counts": {
+          "rag_agent": 0,
+          "gpt4o": 1,
+          "llama70b": 2
+        }
+      }
+    },
+    "inter_judge_agreement": 0.667,
+    "inter_judge_n": 3
+  },
+  "detail": [
+    {
+      "question": {
+        "id": "h_log_wifi_predicate",
+        "prompt": "Give me the exact `log show` command (with the correct --predicate syntax and quoting) to pull Wi-Fi association/disconnect events with their reason codes from the last hour. I keep getting predicate syntax errors.",
+        "category": "wifi",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "Correct `log show --last 1h --predicate '...'` with valid quoting",
+          "Predicate uses a REAL field: subsystem == \"com.apple.wifi\" or process == \"airportd\"/\"wifid\" (not an invented field)",
+          "Flags actually exist (--last, --predicate, --info/--debug, --style)",
+          "Mentions `sudo wdutil log` as the modern alternative",
+          "No hallucinated predicate keys"
+        ],
+        "macos_version": null,
+        "chip": null,
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "To pull Wi-Fi association/disconnect events with their reason codes from the last hour, you can use the following `log show` command:\n\n```bash\nlog show --predicate 'subsystem == \"com.apple.airport\" and (eventMessage contains \"Associated\" or eventMessage contains \"Disassociated\")' --last 1h\n```\n\nThis command filters the system logs to show only the events related to Wi-Fi association and disassociation, including the reason codes, from the `com.apple.airport` subsystem, for the last hour. The `eventMessage contains` filter is used to match the specific event messages that contain the words \"Associated\" or \"Disassociated\", which typically include the reason codes for these events. \n\nNote: The exact event messages and reason codes may vary depending on the specific Wi-Fi events and the macOS version. This command is based on general knowledge of the `com.apple.airport` subsystem and may need to be adjusted if the specific event messages or reason codes are different. \n\nSource: [Source 1] (KB, source=macos_man_pages, tier=2) provides the basic syntax for the `log show` command, including the use of the `--predicate` option to filter events based on specific conditions.",
+        "gpt4o": "To pull Wi-Fi association and disconnect events with their reason codes from the last hour, you can use the following `log show` command:\n\n```bash\nlog show --predicate 'subsystem == \"com.apple.wifi\" && (eventMessage CONTAINS \"association\" OR eventMessage CONTAINS \"disassociated\")' --info --last 1h\n```\n\nThis command filters logs for the Wi-Fi subsystem and looks for messages containing \"association\" or \"disassociated\" within the last hour. Adjust the predicate as needed if you are looking for specific reason codes or additional details.",
+        "llama70b": "To pull Wi-Fi association/disconnect events with their reason codes from the last hour, you can use the following `log show` command:\n\n```bash\nlog show --last 1h --predicate 'subsystem == \"com.apple.airport\" AND (eventMessage CONTAINS \"Associated\" OR eventMessage CONTAINS \"Disassociated\")' --info\n```\n\nThis command will show you the relevant log messages from the last hour, including the reason codes for Wi-Fi association and disconnection events. The `--info` flag is used to include additional information, such as the process and thread IDs, which can be helpful for further troubleshooting.\n\nIf you want to specifically focus on the reason codes, you can modify the predicate to include the `reasonCode` or `reasonString` fields, like so:\n\n```bash\nlog show --last 1h --predicate 'subsystem == \"com.apple.airport\" AND (eventMessage CONTAINS \"Associated\" OR eventMessage CONTAINS \"Disassociated\") AND (eventMessage CONTAINS \"reasonCode\" OR eventMessage CONTAINS \"reasonString\")' --info\n```\n\nHowever, please note that the exact fields and event messages may vary depending on the macOS version and the specific Wi-Fi events you're interested in. You may need to adjust the predicate accordingly to get the desired results."
+      },
+      "label_to_contestant": {
+        "A": "gpt4o",
+        "B": "llama70b",
+        "C": "rag_agent"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 4,
+              "grounding": 2,
+              "note": "uses wrong subsystem and speculative fields"
+            },
+            "A": {
+              "correctness": 4,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 5,
+              "note": "accurate command, but omits wdutil alternative"
+            },
+            "C": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 4,
+              "grounding": 2,
+              "note": "incorrect subsystem, missing flags, no wdutil mention"
+            }
+          },
+          "best": "A",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "gpt4o",
+            "B": "llama70b",
+            "C": "rag_agent"
+          }
+        },
+        "qwen": {
+          "scores": {
+            "B": {
+              "correctness": 4,
+              "actionability": 5,
+              "depth_triage": 4,
+              "grounding": 4,
+              "note": "Correct 'com.apple.airport' subsystem and valid syntax; no wdutil mention"
+            },
+            "A": {
+              "correctness": 3,
+              "actionability": 4,
+              "depth_triage": 3,
+              "grounding": 3,
+              "note": "Uses 'com.apple.wifi' which may not be correct; lacks wdutil mention"
+            },
+            "C": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 2,
+              "grounding": 2,
+              "note": "Uses lowercase 'and/or' causing syntax errors; outdated subsystem reference"
+            }
+          },
+          "best": "B",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "gpt4o",
+            "B": "llama70b",
+            "C": "rag_agent"
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "h_pmset_standby",
+        "prompt": "On an Apple Silicon MacBook, which exact `pmset` keys control the low/high standby delays and how do I read the current values? I want the real key names, not a general explanation.",
+        "category": "battery",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "`pmset -g` (or `pmset -g custom`) to read values",
+          "Correct keys: standbydelaylow / standbydelayhigh / highstandbythreshold",
+          "`sudo pmset -a <key> <seconds>` to set",
+          "Notes Apple Silicon nuances vs Intel; no invented keys"
+        ],
+        "macos_version": null,
+        "chip": "apple_silicon",
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "To control the low/high standby delays on an Apple Silicon MacBook, you can use the `standbydelay` key with the `pmset` command. \n\nThe exact `pmset` key for low/high standby delays is `standbydelay`. You can read the current value using the command:\n```bash\npmset -g | grep standbydelay\n```\nThis will show you the current standby delay in seconds. \n\nTo change the standby delay, you can use the following command:\n```bash\nsudo pmset standbydelay <time_in_seconds>\n```\nReplace `<time_in_seconds>` with your desired standby delay time. \n\nNote that `standbydelay` controls the time after which the machine cuts power to the memory and restores from the memory image saved to the hard drive, as mentioned in [Source 2]. \n\nAlso, as mentioned in [Source 3], you can turn standby off completely by setting `standby` to `0` using the command:\n```bash\nsudo pmset standby 0\n```",
+        "gpt4o": "To control and read the standby delay settings on an Apple Silicon MacBook, you can use the `pmset` command with specific keys. Here are the exact keys and how to read their current values:\n\n1. **Standby Delay**: This controls the delay before the system enters standby mode after sleep.\n   - Key: `standbydelaylow` and `standbydelayhigh`\n   - To read the current values, use the following command in Terminal:\n     ```bash\n     pmset -g | grep standbydelay\n     ```\n\n2. **Standby Mode**: This controls whether standby is enabled.\n   - Key: `standby`\n   - To check if standby is enabled, use:\n     ```bash\n     pmset -g | grep standby\n     ```\n\nThese commands will display the current settings for standby delays and whether standby is enabled. Adjusting these values can be done using `sudo pmset -a <key> <value>`, replacing `<key>` with `standbydelaylow` or `standbydelayhigh` and `<value>` with the desired delay in seconds.",
+        "llama70b": "To control the low and high standby delays on an Apple Silicon MacBook, you can use the following `pmset` keys:\n\n- `standbydelaylow`\n- `standbydelayhigh`\n\nTo read the current values, use the following command in the Terminal:\n\n```bash\npmset -g | grep standby\n```\n\nThis will display the current settings for standby, including the low and high delay values. \n\nIf you want to set a specific value, you can use the following command:\n\n```bash\nsudo pmset -a standbydelaylow <value>\nsudo pmset -a standbydelayhigh <value>\n```\n\nReplace `<value>` with the desired delay in seconds. Note that you need to use `sudo` to modify these settings, as they require administrator privileges."
+      },
+      "label_to_contestant": {
+        "A": "llama70b",
+        "B": "gpt4o",
+        "C": "rag_agent"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 4,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 5,
+              "note": "Correct low/high keys, adds extra standby key"
+            },
+            "A": {
+              "correctness": 4,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 5,
+              "note": "Correct keys low/high, missing highstandbythreshold"
+            },
+            "C": {
+              "correctness": 1,
+              "actionability": 2,
+              "depth_triage": 5,
+              "grounding": 1,
+              "note": "Invented wrong key"
+            }
+          },
+          "best": "A",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "gpt4o",
+            "C": "rag_agent"
+          }
+        },
+        "qwen": {
+          "scores": {},
+          "best": null,
+          "parse_error": true,
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "gpt4o",
+            "C": "rag_agent"
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "h_tcc_db_inspect",
+        "prompt": "I want to directly inspect which apps hold Full Disk Access on macOS by querying the TCC database, not the GUI. What's the exact path and a sqlite query, and what are the gotchas?",
+        "category": "permissions",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "Correct DB path ~/Library/Application Support/com.apple.TCC/TCC.db (and the system one under /Library/…)",
+          "Notes the service string is kTCCServiceSystemPolicyAllFiles for Full Disk Access",
+          "Correct sqlite3 query against the `access` table",
+          "Gotcha: SIP blocks reading the system TCC.db / needs Full Disk Access for Terminal"
+        ],
+        "macos_version": null,
+        "chip": null,
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "To directly inspect which apps hold Full Disk Access on macOS by querying the TCC database, you can use the following SQLite query:\n\n```sql\nsudo sqlite3 /Library/Application\\ Support/com.apple.TCC/TCC.db 'SELECT * FROM access WHERE service = \"kTCCServiceFullDiskAccess\"'\n```\n\nThis will show you the apps that have been granted Full Disk Access. Note that the `service` column in the `access` table is used to determine the type of access, and `kTCCServiceFullDiskAccess` is the service identifier for Full Disk Access [Source 2].\n\nAs for gotchas, be aware that modifying the TCC database directly can have unintended consequences, and it's generally recommended to use the System Settings GUI to manage accessibility and Full Disk Access settings. Additionally, the TCC database schema may change across different macOS versions, so this query may not work as-is on older or future versions of macOS [Source 2].\n\nTo get the bundle ID of an app, you can use the following command:\n\n```bash\nosascript -e 'id of app \"AppName\"'\n```\n\nReplace \"AppName\" with the actual name of the app. This will give you the bundle ID, which you can then use in the SQLite query to check if the app has Full Disk Access [Source 1].",
+        "gpt4o": "To inspect which apps have Full Disk Access by querying the TCC (Transparency, Consent, and Control) database, you can use the following steps. Note that you will need administrative privileges to access the TCC database.\n\n1. **Locate the TCC Database:**\n   The TCC database is located at:\n   ```\n   /Library/Application Support/com.apple.TCC/TCC.db\n   ```\n\n2. **Query the Database:**\n   Use the `sqlite3` command to query the database. Open Terminal and run the following command:\n\n   ```bash\n   sudo sqlite3 \"/Library/Application Support/com.apple.TCC/TCC.db\" \"SELECT client FROM access WHERE service='kTCCServiceSystemPolicyAllFiles';\"\n   ```\n\n   This command will list the apps that have Full Disk Access.\n\n3. **Gotchas:**\n   - **Permissions:** You need to run the command with `sudo` because the TCC database is protected and requires administrative access.\n   - **macOS SIP:** System Integrity Protection (SIP) might prevent modifications to the database, but reading should be allowed with `sudo`.\n   - **Database Changes:** Directly modifying the TCC database is not recommended as it can lead to system instability or security issues. Always use the System Preferences GUI for changes.\n   - **macOS Updates:** The structure of the TCC database can change with macOS updates, so ensure your query is compatible with your macOS version.\n\nBy following these steps, you can inspect which applications have Full Disk Access on your macOS system.",
+        "llama70b": "To inspect which apps hold Full Disk Access on macOS by querying the TCC database, you'll need to access the `tcc.db` file. Here's how:\n\n1. **Location of the TCC database**: The database is located at `/Library/Application Support/com.apple.TCC/TCC.db` (system-wide) or `~/Library/Application Support/com.apple.TCC/TCC.db` (user-specific).\n\n2. **SQLite query**: You can use the following SQLite query to find apps with Full Disk Access:\n   ```sql\n   SELECT client, service FROM access WHERE service LIKE 'kTCCServiceSystemAdministration' AND client LIKE '%YOUR_APP_BUNDLE_ID%' OR service LIKE 'kTCCServiceSystemAdministration' AND allowed = 1;\n   ```\n   However, a more general query to find all apps with Full Disk Access would be:\n   ```sql\n   SELECT client, service FROM access WHERE service LIKE 'kTCCServiceSystemAdministration' AND allowed = 1;\n   ```\n   Replace `YOUR_APP_BUNDLE_ID` with the actual bundle ID of the app you're interested in.\n\n3. **Gotchas**:\n   - **Database location and permissions**: Ensure you have the necessary permissions to access the database. You might need to use `sudo` to access the system-wide database.\n   - **Database schema**: The TCC database schema can change across macOS versions. The provided query is based on the schema used in recent macOS versions, but you should verify the schema if you're using an older version.\n   - **Accessing the database**: To access the database, you'll need to use the `sqlite3` command-line tool, which is included with macOS. You can use it like this: `sqlite3 /Library/Application\\ Support/com.apple.TCC/TCC.db 'SELECT client, service FROM access WHERE service LIKE ''kTCCServiceSystemAdministration'' AND allowed = 1;'`\n\nExample command to query the system-wide TCC database:\n```bash\nsudo sqlite3 /Library/Application\\ Support/com.apple.TCC/TCC.db 'SELECT client, service FROM access WHERE service LIKE ''kTCCServiceSystemAdministration'' AND allowed = 1;'\n```"
+      },
+      "label_to_contestant": {
+        "A": "rag_agent",
+        "B": "gpt4o",
+        "C": "llama70b"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 5,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 5,
+              "note": "Provides exact path, correct service string, proper sqlite query, and relevant SIP gotchas."
+            },
+            "A": {
+              "correctness": 1,
+              "actionability": 2,
+              "depth_triage": 3,
+              "grounding": 2,
+              "note": "Wrong service identifier; query won't return Full Disk Access entries."
+            },
+            "C": {
+              "correctness": 1,
+              "actionability": 2,
+              "depth_triage": 3,
+              "grounding": 2,
+              "note": "Uses incorrect service name and malformed query."
+            }
+          },
+          "best": "B",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "rag_agent",
+            "B": "gpt4o",
+            "C": "llama70b"
+          }
+        },
+        "qwen": {
+          "scores": {
+            "B": {
+              "correctness": 5,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 5,
+              "note": "Correct service string, accurate SIP note, and proper query structure"
+            },
+            "A": {
+              "correctness": 3,
+              "actionability": 5,
+              "depth_triage": 4,
+              "grounding": 4,
+              "note": "Incorrect service string (kTCCServiceFullDiskAccess vs correct kTCCServiceSystemPolicyAllFiles)"
+            },
+            "C": {
+              "correctness": 2,
+              "actionability": 4,
+              "depth_triage": 3,
+              "grounding": 3,
+              "note": "Incorrect service string (kTCCServiceSystemAdministration) and incomplete query"
+            }
+          },
+          "best": "B",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "rag_agent",
+            "B": "gpt4o",
+            "C": "llama70b"
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "h_spctl_gatekeeper",
+        "prompt": "An app is blocked by Gatekeeper. Give me the exact commands to (a) see the assessment verdict, (b) remove the quarantine attribute, and (c) check the code signature — with correct flags.",
+        "category": "permissions",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "`spctl -a -vvv <path>` (or `spctl --assess`) for the verdict",
+          "`xattr -d com.apple.quarantine <path>` (or `xattr -c`)",
+          "`codesign -dv --verbose=4 <path>` to inspect the signature",
+          "Flags are correct and exist; notes `spctl --master-disable` is not the first resort"
+        ],
+        "macos_version": null,
+        "chip": null,
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "To address the issues with the app being blocked by Gatekeeper on macOS 14 (apple_silicon), follow these steps:\n\n(a) **Assessment Verdict**: Unfortunately, the provided KB context does not include a direct method to view the assessment verdict. However, you can check the system logs for related messages.\n\n(b) **Remove the Quarantine Attribute**: To remove the quarantine attribute, use the following command in Terminal:\n```bash\nxattr -d com.apple.quarantine /path/to/your/app.app\n```\nReplace `/path/to/your/app.app` with the actual path to your app. You can drag and drop the app from the Finder into the Terminal window to automatically fill in the path.\n\n(c) **Check the Code Signature**: To check the code signature, use the following command:\n```bash\ncodesign -dv /path/to/your/app.app\n```\nAgain, replace `/path/to/your/app.app` with the actual path to your app.\n\nFor a more detailed code signature verification, you can use the following command, as suggested in [Source 2]:\n```bash\ncodesign --verify -vvvv -R='anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.1] exists and (certificate leaf[field.1.2.840.113635.100.6.1.2] exists or certificate leaf[field.1.2.840.113635.100.6.1.4] exists)' /path/to/your/app.app\n```\nThis command provides a more detailed output, including information about the code signature and any potential issues.\n\nNote: These commands are based on information from [Source 1], [Source 2], and [Source 3].",
+        "gpt4o": "To address the issue with Gatekeeper blocking an app, you can follow these steps:\n\n(a) **See the assessment verdict:**\n\nUse the `spctl` command to check the assessment verdict of the app:\n\n```bash\nspctl --assess --type execute --verbose /path/to/your/app\n```\n\nReplace `/path/to/your/app` with the actual path to the application you are assessing.\n\n(b) **Remove the quarantine attribute:**\n\nUse the `xattr` command to remove the quarantine attribute:\n\n```bash\nxattr -d com.apple.quarantine /path/to/your/app\n```\n\nAgain, replace `/path/to/your/app` with the correct path to your application.\n\n(c) **Check the code signature:**\n\nUse the `codesign` command to verify the code signature of the app:\n\n```bash\ncodesign --verify --deep --verbose=4 /path/to/your/app\n```\n\nThis command will provide detailed information about the code signature status of the application. Make sure to replace `/path/to/your/app` with the appropriate path.",
+        "llama70b": "To troubleshoot the app blocked by Gatekeeper, follow these steps:\n\n(a) To see the assessment verdict, use the `spctl` command with the `--assess` flag, specifying the path to the app:\n```bash\nspctl --assess --type execute /path/to/YourApp.app\n```\nThis will display the assessment verdict.\n\n(b) To remove the quarantine attribute, use the `xattr` command with the `-d` flag, specifying the path to the app and the `com.apple.quarantine` attribute:\n```bash\nxattr -d com.apple.quarantine /path/to/YourApp.app\n```\nThis will remove the quarantine attribute, allowing the app to run.\n\n(c) To check the code signature, use the `codesign` command with the `-dv` flags, specifying the path to the app:\n```bash\ncodesign -dv /path/to/YourApp.app\n```\nThis will display detailed information about the code signature, including its validity and any issues."
+      },
+      "label_to_contestant": {
+        "A": "llama70b",
+        "B": "gpt4o",
+        "C": "rag_agent"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 2,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 3,
+              "note": "Uses verify instead of display; flags not exact"
+            },
+            "A": {
+              "correctness": 2,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 4,
+              "note": "Missing -vvv and --verbose=4 flags"
+            },
+            "C": {
+              "correctness": 1,
+              "actionability": 3,
+              "depth_triage": 2,
+              "grounding": 2,
+              "note": "Fails to provide proper spctl command and exact codesign flags"
+            }
+          },
+          "best": "A",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "gpt4o",
+            "C": "rag_agent"
+          }
+        },
+        "qwen": {
+          "scores": {},
+          "best": null,
+          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `qwen/qwen3-32b` in organization `org_01kv4x6k03f05vnh380ffkq45k` service ",
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "gpt4o",
+            "C": "rag_agent"
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "h_launchd_bootstrap",
+        "prompt": "On current macOS, a LaunchDaemon won't start. Give me the exact modern `launchctl` subcommands to bootstrap it, enable it, kickstart it, and read its last exit status — not the deprecated load/-w workflow.",
+        "category": "system",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "Modern `launchctl bootstrap system /Library/LaunchDaemons/<x>.plist`",
+          "`launchctl enable system/<label>` and `launchctl kickstart -k system/<label>`",
+          "`launchctl print system/<label>` to read state / last exit code",
+          "Explicitly avoids deprecated `launchctl load -w`; correct domain target syntax"
+        ],
+        "macos_version": null,
+        "chip": null,
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "To bootstrap, enable, kickstart, and read the last exit status of your LaunchDaemon on macOS 14 (apple_silicon), use the following `launchctl` subcommands:\n\n1. **Bootstrap and Enable**: \n   First, ensure your daemon is loaded into the launchd context. If it's not loaded, you can load it using `sudo launchctl bootstrap system /System/Library/LaunchDaemons/your_daemon.plist` (replace `your_daemon.plist` with the actual path to your daemon's plist file). Then, enable it with `sudo launchctl enable system/your_daemon` (again, replace `your_daemon` with the label of your daemon).\n\n2. **Kickstart**:\n   To immediately start your daemon, use `sudo launchctl kickstart system/your_daemon`.\n\n3. **Read Last Exit Status**:\n   The last exit status of your daemon can be found by listing the job with `sudo launchctl list | grep your_daemon`. This command lists all loaded jobs and filters the output to show only lines containing `your_daemon`, which should include its last exit status.\n\nThese steps are based on information from [Source 1], [Source 2], [Source 3], and [Source 4], ensuring you're using the modern and non-deprecated `launchctl` subcommands for managing your LaunchDaemon on macOS 14. Remember to replace `your_daemon` and `/System/Library/LaunchDaemons/your_daemon.plist` with the actual label and path of your daemon.",
+        "gpt4o": "To manage your LaunchDaemon using `launchctl` on a current macOS, follow these steps:\n\n1. **Bootstrap the LaunchDaemon:**\n   Use the `bootstrap` command to load the daemon into the system. Replace `com.example.daemon` with your daemon's label and `/Library/LaunchDaemons/com.example.daemon.plist` with the path to your plist file.\n\n   ```bash\n   sudo launchctl bootstrap system /Library/LaunchDaemons/com.example.daemon.plist\n   ```\n\n2. **Enable the LaunchDaemon:**\n   Ensure the daemon is enabled so it can run as intended.\n\n   ```bash\n   sudo launchctl enable system/com.example.daemon\n   ```\n\n3. **Kickstart the LaunchDaemon:**\n   Use the `kickstart` command to start the daemon immediately.\n\n   ```bash\n   sudo launchctl kickstart -k system/com.example.daemon\n   ```\n\n4. **Read the Last Exit Status:**\n   To check the last exit status of the daemon, use the `examine` command.\n\n   ```bash\n   sudo launchctl examine system/com.example.daemon\n   ```\n\nThese commands should help you manage your LaunchDaemon effectively. If you encounter any errors, ensure that the plist file is correctly configured and that you have the necessary permissions.",
+        "llama70b": "To manage a LaunchDaemon on current macOS, you can use the following `launchctl` subcommands:\n\n1. **Bootstrap the LaunchDaemon**: `launchctl bootstrap system /System/Library/LaunchDaemons/your-daemon.plist`\n   Replace `/System/Library/LaunchDaemons/your-daemon.plist` with the actual path to your LaunchDaemon's plist file.\n\n2. **Enable the LaunchDaemon**: `launchctl enable system/your-daemon`\n   Replace `your-daemon` with the label of your LaunchDaemon (usually the filename without the `.plist` extension).\n\n3. **Kickstart the LaunchDaemon**: `launchctl kickstart system/your-daemon`\n   This will immediately start the LaunchDaemon.\n\n4. **Read the last exit status**: `launchctl print system/your-daemon`\n   This command will display detailed information about the LaunchDaemon, including its last exit status.\n\nNote: Make sure to replace `your-daemon` and the plist path with the actual values for your LaunchDaemon. Also, be aware that you need to run these commands with administrator privileges (using `sudo`) if your LaunchDaemon is located in a system directory."
+      },
+      "label_to_contestant": {
+        "A": "gpt4o",
+        "B": "rag_agent",
+        "C": "llama70b"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 5,
+              "grounding": 2,
+              "note": "Missing -k flag, uses `list` grep for status, path may be wrong"
+            },
+            "A": {
+              "correctness": 4,
+              "actionability": 5,
+              "depth_triage": 5,
+              "grounding": 3,
+              "note": "Uses non‑existent `examine` instead of `print` for status"
+            },
+            "C": {
+              "correctness": 4,
+              "actionability": 4,
+              "depth_triage": 5,
+              "grounding": 4,
+              "note": "Correct `print` for status; omits -k flag on kickstart"
+            }
+          },
+          "best": "C",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "gpt4o",
+            "B": "rag_agent",
+            "C": "llama70b"
+          }
+        },
+        "qwen": {
+          "scores": {
+            "B": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 2,
+              "grounding": 2,
+              "note": "Incorrect bootstrap path (/System instead of /Library), missing '-k' in kickstart, and 'list | grep' for exit status."
+            },
+            "A": {
+              "correctness": 3,
+              "actionability": 4,
+              "depth_triage": 4,
+              "grounding": 4,
+              "note": "Correct bootstrap path but uses 'examine' instead of 'print' for exit status."
+            },
+            "C": {
+              "correctness": 4,
+              "actionability": 4,
+              "depth_triage": 4,
+              "grounding": 4,
+              "note": "Correct 'print' for exit status and modern commands, but bootstrap path is /System (should be /Library)."
+            }
+          },
+          "best": "C",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "gpt4o",
+            "B": "rag_agent",
+            "C": "llama70b"
+          }
+        }
+      }
+    },
+    {
+      "question": {
+        "id": "h_sequoia_recent_bug",
+        "prompt": "Since updating to macOS Sequoia 15.5 my Mac shows a firewall/local network prompt loop and some apps can't reach the local network even after allowing them. What's actually going on and how do I fix it on this specific version?",
+        "category": "wifi",
+        "tier": 3,
+        "depth_triage": true,
+        "rubric": [
+          "Acknowledges this is version-specific (Sequoia 15.x local-network-privacy behavior)",
+          "Gives a concrete reset: Settings > Privacy & Security > Local Network toggle, or `tccutil reset` for the relevant service, and re-approve",
+          "Does not give stale/generic firewall advice as if it were older macOS",
+          "Ideally cites a current source (web) rather than guessing"
+        ],
+        "macos_version": "15",
+        "chip": null,
+        "tags": []
+      },
+      "answers": {
+        "rag_agent": "Given the context and the specific issue you're experiencing with the firewall/local network prompt loop on macOS Sequoia 15.5, it seems like there are a few potential avenues to explore. However, the most relevant information comes from [Source 2](https://mjtsai.com/blog/2024/10/02/local-network-privacy-on-sequoia), which discusses issues related to local network privacy on Sequoia, including problems with third-party binaries running under launchd agents being denied local network access despite approving the privacy prompt.\n\nOne potential solution, based on the discussion in [Source 2](https://mjtsai.com/blog/2024/10/02/local-network-privacy-on-sequoia), is to configure your executable to run as a `launchd` daemon instead of an agent, as daemons run as `root` and are not subject to local network privacy restrictions. However, this might require adjustments to how your applications or scripts are executed and managed.\n\nAnother consideration, mentioned in [Source 3](https://mjtsai.com/blog/2024/09/18/macos-firewall-regressions-in-sequoia), is the issue with the macOS firewall regressions in Sequoia, including the problem where \"Block incoming connections\" now also blocks DNS responses, which could be relevant if your applications rely on DNS lookups.\n\nGiven these considerations, a direct fix isn't immediately clear without more specific details about your setup and the exact nature of the applications experiencing issues. However, exploring the configuration of your launchd agents or daemons, as well as reviewing your firewall settings in light of the changes in Sequoia, might offer a path forward.\n\nTo adjust your launchd configuration, you would typically edit the `.plist` files associated with your services, which are usually found in `~/Library/LaunchAgents/` for user-specific services or `/Library/LaunchDaemons/` for system-wide services. For example, to change a service to run as a daemon, you would need to adjust the `Label`, `ProgramArguments`, and possibly the `UserName` or `GroupName` keys in the `.plist` file, and then reload the launchd configuration using a command like:\n```bash\nlaunchctl load /Library/LaunchDaemons/your_service.plist\n```\nOr, for user-specific services:\n```bash\nlaunchctl load ~/Library/LaunchAgents/your_service.plist\n```\nKeep in mind, these steps require careful consideration and knowledge of launchd and plist file editing, and it's recommended to backup any files before making changes.\n\nIf the issue persists, and given the complexity and variability of network and firewall configurations, it might be beneficial to consult the specific documentation for your version of macOS and the applications in question, or to seek guidance from Apple Support or a professional with experience in macOS network configurations.",
+        "gpt4o": "The issue you're experiencing with the firewall and local network prompts in macOS Sequoia 15.5 could be due to a corrupted firewall configuration or a problem with the network permissions for specific apps. Here are some steps to resolve this:\n\n1. **Reset the Firewall Configuration:**\n   - Open Terminal and execute the following command to reset the firewall settings:\n     ```bash\n     sudo /usr/libexec/ApplicationFirewall/socketfilterfw --reset\n     ```\n   - After resetting, go to **System Settings > Network > Firewall** and re-enable the firewall if it was turned off.\n\n2. **Check and Reset App Permissions:**\n   - Go to **System Settings > Privacy & Security > Network Permissions**.\n   - Find the apps that are having issues and toggle their network permissions off and then back on.\n   - If the problem persists, remove the app from the list and re-add it by launching the app and granting permissions when prompted.\n\n3. **Rebuild the Launch Services Database:**\n   - Sometimes, the Launch Services database can become corrupted, affecting app permissions. Rebuild it using the following Terminal command:\n     ```bash\n     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -kill -r -domain local -domain system -domain user\n     ```\n   - Restart your Mac after running this command.\n\nThese steps should help resolve the firewall prompt loop and network access issues for your apps. If the problem persists, consider checking for any third-party security software that might be interfering with macOS's built-in firewall and network permissions.",
+        "llama70b": "The issue you're experiencing is likely related to changes in the firewall and network settings in macOS Sequoia 15.5. Here are the top 3 potential fixes:\n\n1. **Reset the firewall configuration**: Try resetting the firewall to its default settings. Go to `System Settings` > `Network` > `Advanced` > `Firewall`, then click on the lock icon and enter your administrator password. Click on the \"Reset\" button at the bottom of the window. This will reset the firewall to its default settings, which may resolve the prompt loop and connectivity issues.\n2. **Check the `nfext` configuration**: The `nfext` system extension might be causing issues with the firewall. Open the Terminal app and run the command `sudo nfsctl list | grep nfext`. If `nfext` is enabled, try disabling it by running `sudo nfsctl disable nfext`. Restart your Mac and see if the issue persists.\n3. **Inspect and adjust `sysctl` settings**: Some `sysctl` settings might be interfering with the firewall and network connectivity. Run the command `sysctl -a | grep net` in the Terminal app to inspect the current settings. Look for settings related to `net.inet.ip.fw` and `net.inet6.ip6.fw`. If you find any unusual settings, try resetting them to their default values by running `sudo sysctl -w net.inet.ip.fw.enable=1` and `sudo sysctl -w net.inet6.ip6.fw.enable=1`. Restart your Mac and test the connectivity again.\n\nThese steps should help you resolve the firewall and network issues on your Mac running macOS Sequoia 15.5."
+      },
+      "label_to_contestant": {
+        "A": "llama70b",
+        "B": "rag_agent",
+        "C": "gpt4o"
+      },
+      "judgments": {
+        "gptoss": {
+          "scores": {
+            "B": {
+              "correctness": 3,
+              "actionability": 3,
+              "depth_triage": 3,
+              "grounding": 4,
+              "note": "Version‑specific sources, but solution not the typical reset"
+            },
+            "A": {
+              "correctness": 1,
+              "actionability": 2,
+              "depth_triage": 1,
+              "grounding": 1,
+              "note": "Incorrect paths, irrelevant nfext/sysctl advice"
+            },
+            "C": {
+              "correctness": 2,
+              "actionability": 3,
+              "depth_triage": 2,
+              "grounding": 2,
+              "note": "Partial reset steps, wrong UI locations, no version focus"
+            }
+          },
+          "best": "B",
+          "parse_error": false,
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "rag_agent",
+            "C": "gpt4o"
+          }
+        },
+        "qwen": {
+          "scores": {},
+          "best": null,
+          "error": "RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for model `qwen/qwen3-32b` in organization `org_01kv4x6k03f05vnh380ffkq45k` service ",
+          "label_to_contestant": {
+            "A": "llama70b",
+            "B": "rag_agent",
+            "C": "gpt4o"
+          }
+        }
+      }
+    }
+  ]
+}

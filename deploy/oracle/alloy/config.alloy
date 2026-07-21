@@ -1,0 +1,58 @@
+// Alloy runs beside the app on the Oracle VM. It is the only component that
+// can read the app's protected /metrics endpoint and Docker's JSON log stream.
+
+prometheus.scrape "macos_agent" {
+  targets = [{"__address__" = "app:8000", "job" = "macos-agent"}]
+  metrics_path = "/metrics"
+  scrape_interval = "30s"
+  authorization {
+    type = "Bearer"
+    credentials = sys.env("METRICS_TOKEN")
+  }
+  forward_to = [prometheus.remote_write.grafana.receiver]
+}
+
+prometheus.remote_write "grafana" {
+  endpoint {
+    url = sys.env("GRAFANA_PROMETHEUS_REMOTE_WRITE_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_PROMETHEUS_USERNAME")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}
+
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "container_logs" {
+  targets = []
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex = "/(.*)"
+    target_label = "container"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+  targets = discovery.docker.containers.targets
+  labels = {"platform" = "docker"}
+  relabel_rules = discovery.relabel.container_logs.rules
+  forward_to = [loki.write.grafana.receiver]
+}
+
+loki.write "grafana" {
+  endpoint {
+    url = sys.env("GRAFANA_LOKI_WRITE_URL")
+    basic_auth {
+      username = sys.env("GRAFANA_LOKI_USERNAME")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}

@@ -1,0 +1,25 @@
+# Keep the build context small: the serving image needs only code + lockfiles.
+.git
+.venv
+**/__pycache__
+**/*.pyc
+
+# Never ship credentials or local secrets into the build context.
+.env
+.env.production
+deploy/oracle/.env.production
+
+# The knowledge base + scrapers are the WRITE path — not needed to serve.
+vectorDBIngestion/
+Agent/eval/results/
+
+# Local dev database (SQLite) — deployment uses managed Postgres.
+Agent/backend/data/
+
+# Observability stack is deployed separately (docker-compose / Grafana Cloud).
+observability/
+
+# Local + editor cruft
+.DS_Store
+.claude/
+*.log

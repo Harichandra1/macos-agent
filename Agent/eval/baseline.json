@@ -1,0 +1,11 @@
+{
+  "_comment": "Committed quality baseline for the interactive benchmark (Phase 4 regression gate). Update deliberately — with a re-run report attached — when a change genuinely moves the numbers. `tolerance` absorbs LLM-judge noise; `require_beats_gpt4o` enforces the project's core thesis (the agent must not fall behind raw GPT-4o on this domain).",
+  "source": "interactive_report.json",
+  "recorded": "2026-07-21",
+  "n": 4,
+  "agent_resolution_rate": 0.5,
+  "agent_either_rate": 0.5,
+  "gpt4o_resolution_rate": 0.25,
+  "tolerance": 0.15,
+  "require_beats_gpt4o": true
+}

@@ -1,0 +1,70 @@
+name: macos-agent
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Agent/Dockerfile
+    env_file:
+      - ${PRODUCTION_ENV_FILE:-../../.env.production}
+    expose:
+      - "8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+
+  caddy:
+    image: caddy:2.10-alpine
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN must be set in .env.production}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL must be set in .env.production}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  duckdns:
+    image: curlimages/curl:8.12.1
+    environment:
+      DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN:?DUCKDNS_DOMAIN must be set in .env.production}
+      DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:?DUCKDNS_TOKEN must be set in .env.production}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        while true; do
+          curl --fail --silent --show-error
+          "https://www.duckdns.org/update?domains=$$DUCKDNS_DOMAIN&token=$$DUCKDNS_TOKEN&ip=";
+          sleep 300;
+        done
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.10.2
+    depends_on:
+      app:
+        condition: service_healthy
+    env_file:
+      - ${PRODUCTION_ENV_FILE:-../../.env.production}
+    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy"]
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - alloy_data:/var/lib/alloy
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  alloy_data:
