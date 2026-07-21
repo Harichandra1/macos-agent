@@ -31,3 +31,4 @@ Agent/eval/results/judgments_cache.json
 
 # App database (SQLite dev store — Phase 1)
 Agent/backend/data/
+vectorDBIngestion/data/
