@@ -43,7 +43,7 @@ from .credits import (
     check_and_consume, record_usage,
 )
 from .db import get_sessionmaker, run_migrations
-from .deps import build, get_agent, readiness
+from .deps import aclose, build_async, get_agent, readiness
 from .guardrails import ABUSE_MESSAGE, check_abuse, redact_text
 from .logging import get_logger, timed
 from . import metrics
@@ -66,8 +66,14 @@ async def lifespan(_app: FastAPI):
     if errors:
         raise RuntimeError("production configuration incomplete: " + ", ".join(errors))
     run_migrations()  # fail fast: a half-migrated schema must not serve traffic
-    build()  # best-effort agent build; /health reports if credentials are missing.
-    yield
+    # Best-effort agent build; /health reports if credentials are missing.
+    # MUST be build_async(): this server drives the graph with astream(), which
+    # needs a checkpointer implementing the async interface.
+    await build_async()
+    try:
+        yield
+    finally:
+        await aclose()  # release the checkpointer connection pool
 
 
 app = FastAPI(title="macOS Troubleshooting Agent", version="1.0.0", lifespan=lifespan)
@@ -348,9 +354,13 @@ async def _chat_events(agent, message: str, session_id: str,
 
     except Exception as e:  # noqa: BLE001
         error_type = classify_llm_error(e)
+        # exc_info=True is load-bearing: error_type "other" means "we could not
+        # name this exception", so repr(e) alone is often useless (a bare
+        # NotImplementedError once hid a total production outage here).
+        # _JsonFormatter renders the traceback into the "exc" field.
         logger.error("chat stream failed", extra={"extra_fields": {
             "session": session_id, "user_id": user_id,
-            "error_type": error_type, "error": repr(e)}})
+            "error_type": error_type, "error": repr(e)}}, exc_info=True)
         _record_turn(tracker, user_id, session_id, error_type=error_type)
         metrics.record_turn_usage(
             llm_calls=tracker.llm_calls, input_tokens=tracker.input_tokens,

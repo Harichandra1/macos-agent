@@ -1,6 +1,12 @@
 """
 test_checkpointer_postgres.py — V3: Postgres-backed conversation memory.
 
+SCOPE: this file covers the SYNCHRONOUS checkpointer path only — the CLI and
+eval harnesses, which drive the graph with invoke(). It deliberately does NOT
+cover the ASGI server, which uses astream() and therefore needs an async-capable
+saver. Trusting this file as full coverage is what let a total production outage
+ship: see tests/test_checkpointer_async.py, which owns that contract.
+
 Closes a real gap: `make_memory_checkpointer()` previously only persisted
 when a SEPARATE `AGENT_CHECKPOINT_DB` sqlite path was set (never wired in
 render.yaml), so production ran on an in-process MemorySaver — conversation

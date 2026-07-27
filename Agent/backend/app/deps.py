@@ -14,6 +14,10 @@ from .logging import get_logger
 
 _agent = None
 _build_error: str | None = None
+# AsyncConnectionPool backing the checkpointer, owned here so lifespan can close
+# it. None when the in-memory tier is in use.
+_checkpointer_pool = None
+_checkpointer_tier: str = "unbuilt"
 logger = get_logger()
 
 
@@ -44,10 +48,9 @@ def _export_env(settings) -> None:
             os.environ.setdefault(k, v)
 
 
-def build() -> None:
-    """Attempt to build the agent; record (don't raise) any failure so the app
-    can still start and report readiness via /health."""
-    global _agent, _build_error
+def _prepare() -> str | None:
+    """Load credentials into os.environ and verify the required ones exist.
+    Returns an error string, or None when the build may proceed."""
     settings = get_settings()
 
     # Load .env into os.environ so provider selection + provider keys
@@ -62,29 +65,86 @@ def build() -> None:
                         if not key_present(e)]                          # Groq/NVIDIA/OpenRouter
     missing = infra_missing + [m for m in provider_missing if m not in infra_missing]
     if missing:
-        _build_error = f"missing credentials: {', '.join(missing)}"
-        logger.warning("agent not built", extra={"extra_fields": {"reason": _build_error}})
-        return
+        return f"missing credentials: {', '.join(missing)}"
+    return None
 
+
+def _compile(checkpointer) -> None:
+    """Compile the agent onto the given checkpointer; record (don't raise) any
+    failure so the app can still start and report readiness via /health."""
+    global _agent, _build_error
+    settings = get_settings()
     try:
         # Imported lazily so the module (and tests) load without heavy deps.
-        from app.agent.graph import build_agent, make_memory_checkpointer
-        _agent = build_agent(
-            model=settings.agent_model,
-            checkpointer=make_memory_checkpointer(),
-        )
+        from app.agent.graph import build_agent
+        _agent = build_agent(model=settings.agent_model, checkpointer=checkpointer)
         _build_error = None
-        logger.info("agent built", extra={"extra_fields": {"model": settings.agent_model}})
+        logger.info("agent built", extra={"extra_fields": {
+            "model": settings.agent_model, "checkpointer": _checkpointer_tier,
+        }})
     except Exception as e:  # noqa: BLE001
         _build_error = repr(e)
-        logger.error("agent build failed", extra={"extra_fields": {"error": _build_error}})
+        logger.error("agent build failed",
+                     extra={"extra_fields": {"error": _build_error}}, exc_info=True)
+
+
+async def build_async() -> None:
+    """
+    Build the agent for the ASGI server. Must be awaited from inside a running
+    event loop — AsyncPostgresSaver captures the loop at construction time.
+
+    This is the path that matters in production: main.py drives the graph with
+    astream(), which requires a checkpointer implementing the async interface.
+    """
+    global _build_error, _checkpointer_pool, _checkpointer_tier
+    if (err := _prepare()):
+        _build_error = err
+        logger.warning("agent not built", extra={"extra_fields": {"reason": err}})
+        return
+
+    from app.agent.graph import make_async_checkpointer
+    checkpointer, pool = await make_async_checkpointer()
+    _checkpointer_pool = pool
+    _checkpointer_tier = "postgres" if pool is not None else "memory"
+    _compile(checkpointer)
+
+
+def build(*, allow_sync_postgres: bool = True) -> None:
+    """
+    Build the agent for SYNC callers (CLI, evals, sync tests) that drive the
+    graph with invoke(). The ASGI server uses build_async() instead.
+    """
+    global _build_error, _checkpointer_tier
+    if (err := _prepare()):
+        _build_error = err
+        logger.warning("agent not built", extra={"extra_fields": {"reason": err}})
+        return
+
+    from app.agent.graph import make_memory_checkpointer
+    checkpointer = make_memory_checkpointer(allow_sync_postgres=allow_sync_postgres)
+    # Same vocabulary as build_async() so /health means one thing, not two.
+    _checkpointer_tier = ("postgres" if type(checkpointer).__name__ == "PostgresSaver"
+                          else "memory")
+    _compile(checkpointer)
 
 
 def get_agent():
     """Return the compiled agent, building on first use. None if unavailable."""
     if _agent is None and _build_error is None:
-        build()
+        # Unreachable in the server: lifespan awaits build_async() before any
+        # request is accepted. Defensive only — and it refuses the sync Postgres
+        # tier because this path has no running loop (so it cannot build the
+        # async saver) and must never resurrect the astream NotImplementedError.
+        build(allow_sync_postgres=False)
     return _agent
+
+
+async def aclose() -> None:
+    """Close the checkpointer pool. Called from the lifespan shutdown path."""
+    global _checkpointer_pool
+    if _checkpointer_pool is not None:
+        await _checkpointer_pool.close()
+        _checkpointer_pool = None
 
 
 def readiness() -> dict:
@@ -92,4 +152,7 @@ def readiness() -> dict:
     return {
         "ready": agent is not None,
         "reason": _build_error,
+        # Surfaces a silent degrade: "memory" against a Postgres DATABASE_URL
+        # means conversation history is being lost on every restart.
+        "checkpointer": _checkpointer_tier,
     }

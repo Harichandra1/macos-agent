@@ -64,6 +64,20 @@ except ImportError:  # standalone: python graph.py
         SUMMARY_SYSTEM_PROMPT,
     )
 
+# Structured JSON logger (app.logging is stdlib-only, so this is safe to import
+# from every entry point). Degradations here — a dead checkpointer, a failed
+# retrieval — must land in the Loki pipeline as parseable records; bare prints to
+# stderr are not indexed and are how the async-checkpointer bug stayed invisible.
+try:  # app.agent.graph -> app.logging
+    from ..logging import get_logger
+except ImportError:  # standalone: python graph.py
+    import logging as _stdlib_logging
+
+    def get_logger(name: str = "macos_agent"):
+        return _stdlib_logging.getLogger(name)
+
+logger = get_logger()
+
 # ---------------------------------------------------------------------------
 # Case file — the accumulating diagnostic memory across conversation turns.
 #
@@ -393,8 +407,9 @@ def _compress_history(messages: list, existing_summary: str, llm) -> dict:
         ])
         summary = str(resp.content).strip()[:_SUMMARY_MAX_CHARS]
     except Exception as e:  # noqa: BLE001 — degrade, never die
-        print(f"  [history] summarization failed ({e!r}); keeping full transcript.",
-              file=sys.stderr)
+        logger.warning("history summarization failed; keeping full transcript",
+                       extra={"extra_fields": {"node": "history", "error": repr(e)}},
+                       exc_info=True)
         return {}
     if not summary:
         return {}
@@ -461,8 +476,9 @@ def node_intake(state: AgentState, llm) -> dict:
         raw = re.sub(r"\s*```$", "", raw)
         intake = json.loads(raw)
     except Exception as e:  # noqa: BLE001 — degrade, never die
-        print(f"  [intake] LLM extraction failed ({e!r}); regex fallback.",
-              file=sys.stderr)
+        logger.warning("intake LLM extraction failed; using regex fallback",
+                       extra={"extra_fields": {"node": "intake", "error": repr(e)}},
+                       exc_info=True)
         intake = _regex_intake(latest_text)
 
     # Fold IMPLIED already-tried (inferred from phrasing) into the explicit list.
@@ -613,8 +629,9 @@ def node_kb_retrieve(state: AgentState, retriever: Retriever) -> dict:
             min_tier=min_tier,
         )
     except Exception as e:  # noqa: BLE001
-        print(f"  [kb_retrieve] retrieval failed ({e!r}); continuing without KB.",
-              file=sys.stderr)
+        logger.warning("KB retrieval failed; answering without KB grounding",
+                       extra={"extra_fields": {"node": "kb_retrieve", "error": repr(e)}},
+                       exc_info=True)
         return {"kb_results": [], "kb_low_conf": True}
 
     # kb_low_conf is the retriever's confidence-miss signal — smart_merge decides
@@ -704,7 +721,9 @@ def node_web_search(state: AgentState) -> dict:
             for r in resp.get("results", [])
         ]
     except Exception as e:
-        print(f"  [web_search] Error: {e}", file=sys.stderr)
+        logger.warning("web search failed; continuing without web results",
+                       extra={"extra_fields": {"node": "web_search", "error": repr(e)}},
+                       exc_info=True)
         hits = []
 
     return {"web_results": hits, "web_ran": True}
@@ -1245,7 +1264,9 @@ def node_synthesize(state: AgentState, llm) -> dict:
             HumanMessage(content=prompt),
         ])
     except Exception as e:  # noqa: BLE001
-        print(f"  [synthesize] all providers failed ({e!r}).", file=sys.stderr)
+        logger.error("synthesis failed on every provider; returning apology answer",
+                     extra={"extra_fields": {"node": "synthesize", "error": repr(e)}},
+                     exc_info=True)
         answer_msg = AIMessage(content=_apology_answer(merged))
 
     out: dict = {"messages": [answer_msg]}
@@ -1397,71 +1418,173 @@ def _build_graph(llm, intake_llm, filter_llm, planner_llm, retriever,
     return graph.compile(checkpointer=checkpointer)
 
 
+def _plain_dsn(database_url: str) -> str:
+    """Raw psycopg wants a plain postgresql:// DSN — strip the SQLAlchemy
+    "+psycopg" driver suffix our settings layer adds for the ORM engine."""
+    return database_url.replace("postgresql+psycopg://", "postgresql://", 1)
+
+
+async def _async_postgres_checkpointer(database_url: str):
+    """
+    Build an AsyncPostgresSaver over a connection pool. Returns (saver, pool);
+    the caller owns the pool and must close it on shutdown.
+
+    THIS is the checkpointer the FastAPI server must use. The synchronous
+    PostgresSaver below implements only get_tuple/put/put_writes — it inherits
+    BaseCheckpointSaver.aget_tuple, whose body is `raise NotImplementedError`.
+    Handing it to a graph that is driven with `astream()` (main.py) fails on
+    EVERY turn before a single node runs, surfacing as the generic
+    "internal error while generating the answer". See make_memory_checkpointer.
+
+    A pool rather than one long-lived connection because managed Postgres (Neon)
+    closes idle connections and fails over: `check` + `max_lifetime` replace a
+    dead connection transparently instead of poisoning every subsequent turn
+    until the container restarts. Mirrors pool_pre_ping/pool_recycle in db.py.
+    """
+    from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from psycopg.rows import dict_row
+    from psycopg_pool import AsyncConnectionPool
+
+    pool = AsyncConnectionPool(
+        conninfo=_plain_dsn(database_url),
+        min_size=1,
+        # WEB_CONCURRENCY is 1 and the ORM pool is already 5+5 — stay well under
+        # the managed database's connection cap.
+        max_size=int(os.environ.get("CHECKPOINTER_POOL_SIZE", "4")),
+        # psycopg_pool 3.2+ deprecates implicit open-on-construct, and opening
+        # explicitly means a bad DSN raises HERE (inside the caller's try) rather
+        # than on the first user turn.
+        open=False,
+        kwargs={
+            "autocommit": True,
+            "prepare_threshold": 0,
+            # REQUIRED: AsyncPostgresSaver.setup() indexes rows by column name
+            # (row["v"]). With the default tuple row factory it raises TypeError,
+            # which would be swallowed into a silent in-memory degrade.
+            "row_factory": dict_row,
+        },
+        check=AsyncConnectionPool.check_connection,
+        max_lifetime=1800.0,
+        max_idle=300.0,
+        timeout=10.0,
+    )
+    try:
+        await pool.open(wait=True, timeout=10)
+        saver = AsyncPostgresSaver(pool)
+        await saver.setup()
+    except BaseException:
+        # open()/setup() failing leaves the pool's worker tasks running; the
+        # caller only degrades, so nothing else would ever close them.
+        await pool.close()
+        raise
+    return saver, pool
+
+
+async def make_async_checkpointer():
+    """
+    Async counterpart of make_memory_checkpointer(). Returns (checkpointer, pool)
+    where pool is None for the in-memory tier.
+
+    MUST be awaited from inside a running event loop: AsyncPostgresSaver.__init__
+    calls asyncio.get_running_loop() and captures it, so it cannot be constructed
+    from a sync context at all.
+
+    Only two tiers — Postgres, then in-memory. Every checkpointer this can return
+    natively implements the async interface, which is the invariant the server
+    depends on.
+    """
+    database_url = os.environ.get("DATABASE_URL", "")
+    if database_url.startswith("postgresql"):
+        try:
+            return await _async_postgres_checkpointer(database_url)
+        except Exception as e:  # noqa: BLE001
+            logger.error(
+                "checkpointer degraded to in-process memory — conversation "
+                "history will NOT persist across restarts or workers",
+                extra={"extra_fields": {"tier": "postgres", "error": repr(e)}},
+                exc_info=True,
+            )
+
+    from langgraph.checkpoint.memory import MemorySaver
+    return MemorySaver(), None
+
+
 def _postgres_checkpointer(database_url: str):
     """
     Build a PostgresSaver on a long-lived connection. Returns None if the
     driver is missing or the connection fails — the caller degrades.
 
-    `PostgresSaver.from_conn_string` is a context-manager generator (same
-    trap as SqliteSaver, see below) — construct the connection directly
-    instead, with the exact kwargs that helper uses internally
-    (autocommit=True, prepare_threshold=0, dict_row) so behavior matches.
-    `.setup()` creates/upgrades the checkpointer's OWN tables (checkpoints,
-    checkpoint_writes, …) — separate from the Alembic-managed schema — and is
-    idempotent (tracks its own migration version), so calling it on every
-    process start is safe and required ("MUST be called... the first time").
+    SYNC ONLY — this saver implements no async methods. Never hand it to a graph
+    that will be driven with astream(); use make_async_checkpointer() for that.
+    Kept for the CLI/eval path, which uses invoke().
+
+    `PostgresSaver.from_conn_string` is a context-manager generator — construct
+    the connection directly instead, with the exact kwargs that helper uses
+    internally (autocommit=True, prepare_threshold=0, dict_row) so behavior
+    matches. `.setup()` creates/upgrades the checkpointer's OWN tables
+    (checkpoints, checkpoint_writes, …) — separate from the Alembic-managed
+    schema — and is idempotent (tracks its own migration version), so calling it
+    on every process start is safe and required ("MUST be called... the first
+    time").
     """
     import psycopg
     from langgraph.checkpoint.postgres import PostgresSaver
     from psycopg.rows import dict_row
 
-    # Raw psycopg wants a plain postgresql:// DSN — strip the SQLAlchemy
-    # "+psycopg" driver suffix our settings layer adds for the ORM engine.
-    dsn = database_url.replace("postgresql+psycopg://", "postgresql://", 1)
-    conn = psycopg.connect(dsn, autocommit=True, prepare_threshold=0,
-                           row_factory=dict_row)
+    conn = psycopg.connect(_plain_dsn(database_url), autocommit=True,
+                           prepare_threshold=0, row_factory=dict_row)
     saver = PostgresSaver(conn)
     saver.setup()
     return saver
 
 
-def make_memory_checkpointer():
+def make_memory_checkpointer(*, allow_sync_postgres: bool = True):
     """
-    Return a checkpointer for persistent conversation state.
+    Return a SYNC checkpointer for persistent conversation state — for callers
+    that drive the graph with invoke() (the CLI, evals, sync tests). The FastAPI
+    server must use make_async_checkpointer() instead.
 
     Precedence:
-      1. Postgres, when DATABASE_URL points at one — the SAME database that
-         already holds users/credits/feedback, so conversation memory
-         survives restarts/redeploys and is shared across workers (the
-         MemorySaver fallback below is per-process RAM only, which silently
-         lost every session on every deploy).
-      2. An on-disk SQLite store when AGENT_CHECKPOINT_DB is set — a dev
-         convenience for persisting across restarts without Postgres.
-      3. An in-process MemorySaver (single-instance dev server only).
-    Any failure at a given tier degrades to the next rather than raising —
-    a broken checkpoint store must never keep the app from serving turns.
+      1. Postgres, when DATABASE_URL points at one AND allow_sync_postgres —
+         the SAME database that already holds users/credits/feedback, so
+         conversation memory survives restarts/redeploys and is shared across
+         workers (the MemorySaver fallback is per-process RAM only, which
+         silently lost every session on every deploy).
+      2. An in-process MemorySaver (single-instance dev server only).
+
+    `allow_sync_postgres=False` is the guard that makes the astream bug
+    unrepresentable: a caller that cannot prove it will only ever use invoke()
+    passes False and gets a checkpointer that is safe under either execution
+    mode, rather than one that raises NotImplementedError on every turn.
+
+    A failure degrades to the next tier rather than raising — a broken
+    checkpoint store must never keep the app from serving turns — but it is
+    logged at ERROR, because a silent degrade means every session is being
+    quietly lost.
+
+    NOTE: there is deliberately no SQLite tier. langgraph-checkpoint-sqlite is
+    not a dependency of this project, so that branch could only ever raise
+    ImportError; a bare `print` hid that for its entire lifetime.
     """
     database_url = os.environ.get("DATABASE_URL", "")
     if database_url.startswith("postgresql"):
-        try:
-            return _postgres_checkpointer(database_url)
-        except Exception as e:  # noqa: BLE001
-            print(f"  [checkpointer] Postgres unavailable ({e}); "
-                  f"falling back.", file=sys.stderr)
+        if not allow_sync_postgres:
+            logger.warning(
+                "sync Postgres checkpointer refused for an async-capable caller; "
+                "using in-process memory for this build",
+                extra={"extra_fields": {"tier": "memory"}},
+            )
+        else:
+            try:
+                return _postgres_checkpointer(database_url)
+            except Exception as e:  # noqa: BLE001
+                logger.error(
+                    "checkpointer degraded to in-process memory — conversation "
+                    "history will NOT persist across restarts or workers",
+                    extra={"extra_fields": {"tier": "postgres", "error": repr(e)}},
+                    exc_info=True,
+                )
 
-    db_path = os.environ.get("AGENT_CHECKPOINT_DB")
-    if db_path:
-        try:
-            import sqlite3
-            from langgraph.checkpoint.sqlite import SqliteSaver
-            # NOTE: SqliteSaver.from_conn_string returns a CONTEXT MANAGER in
-            # modern langgraph — construct the saver directly on a long-lived
-            # connection instead. check_same_thread=False because FastAPI serves
-            # turns from multiple threads.
-            return SqliteSaver(sqlite3.connect(db_path, check_same_thread=False))
-        except Exception as e:  # noqa: BLE001
-            print(f"  [checkpointer] SQLite unavailable ({e}); using in-memory.",
-                  file=sys.stderr)
     from langgraph.checkpoint.memory import MemorySaver
     return MemorySaver()
 
