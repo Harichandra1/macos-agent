@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
+# Normal update: fast-forward to origin/main and run the image CI built for it.
 set -euo pipefail
 
-DEPLOY_ROOT="${DEPLOY_ROOT:-/opt/macos-agent}"
-cd "$DEPLOY_ROOT"
+cd "${DEPLOY_ROOT:-/opt/macos-agent}"
+# shellcheck source=deploy/oracle/_common.sh
+source deploy/oracle/_common.sh
 
-test -f .env.production || {
-  echo "Missing $DEPLOY_ROOT/.env.production" >&2
-  exit 1
-}
+require_env_file
 
 git pull --ff-only origin main
-docker compose --env-file .env.production -f deploy/oracle/docker-compose.yml config >/dev/null
-docker compose --env-file .env.production -f deploy/oracle/docker-compose.yml up -d --build
-docker compose --env-file .env.production -f deploy/oracle/docker-compose.yml ps
+launch_pinned "$(git rev-parse HEAD)"

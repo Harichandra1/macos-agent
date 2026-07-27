@@ -1,0 +1,135 @@
+name: Build and publish serving image
+
+# WHY THIS EXISTS: the Oracle Always Free VM cannot build this image. `uv sync`
+# over the langchain/langgraph/openai/psycopg tree peaks well above the RAM an
+# Always Free shape has, so building on the host either OOM-kills or thrashes.
+# CI builds; the VM only pulls. deploy/oracle/deploy.sh consumes what this
+# publishes.
+#
+# Images are tagged with the commit SHA as well as `latest`, so a deployment
+# pins the exact image matching its checked-out compose/Caddy config, and
+# rollback is "point at an older tag" rather than "rebuild on the box".
+#
+# Both architectures are built on NATIVE runners (no QEMU emulation): arm64 for
+# the Ampere A1 shape, amd64 for the E2 micro fallback and local x86 testing.
+# Each runner pushes an untagged blob by digest; the merge job then stitches the
+# digests into one multi-arch tag.
+
+# Deliberately NOT filtered by `paths`. deploy.sh and rollback.sh pin the image
+# tag to a commit SHA, so every commit on main must have a corresponding image
+# or those scripts fail on a missing tag. Building unconditionally keeps the
+# invariant "any commit on main is deployable and rollback-able" true. Layer
+# caching makes a no-op rebuild cheap, and Actions minutes are free on public
+# repositories.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm   # Ampere A1 target
+          - platform: linux/amd64
+            runner: ubuntu-24.04       # E2 micro fallback target
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # GHCR rejects uppercase path segments; the owner here is `Harichandra1`.
+      - name: Resolve image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Sanitise platform for artifact naming
+        id: platform
+        run: echo "slug=${MATRIX_PLATFORM//\//-}" >> "$GITHUB_OUTPUT"
+        env:
+          MATRIX_PLATFORM: ${{ matrix.platform }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Agent/Dockerfile
+          platforms: ${{ matrix.platform }}
+          # Push the layers only. Tags are applied once, in the merge job, so a
+          # tag never points at a half-published multi-arch set.
+          outputs: type=image,name=${{ steps.image.outputs.name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,scope=${{ matrix.platform }},mode=max
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ steps.platform.outputs.slug }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: Publish multi-arch tags
+    runs-on: ubuntu-24.04
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Resolve image name
+        id: image
+        run: echo "name=${REGISTRY}/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digest-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create manifest list
+        working-directory: /tmp/digests
+        run: |
+          docker buildx imagetools create \
+            -t "${IMAGE}:latest" \
+            -t "${IMAGE}:${GITHUB_SHA}" \
+            $(printf "${IMAGE}@sha256:%s " *)
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}
+
+      - name: Show published image
+        run: docker buildx imagetools inspect "${IMAGE}:${GITHUB_SHA}"
+        env:
+          IMAGE: ${{ steps.image.outputs.name }}

@@ -2,9 +2,13 @@ name: macos-agent
 
 services:
   app:
-    build:
-      context: ../..
-      dockerfile: Agent/Dockerfile
+    # Prebuilt by .github/workflows/build-image.yml and pulled from GHCR. The
+    # Always Free VM does not have the RAM to run `uv sync` for this dependency
+    # tree, so the image is never built on the host. APP_IMAGE_TAG is set to a
+    # commit SHA by deploy.sh/rollback.sh so the running image always matches
+    # the checked-out compose and Caddy config.
+    image: ${APP_IMAGE:-ghcr.io/harichandra1/macos-agent}:${APP_IMAGE_TAG:-latest}
+    pull_policy: always
     env_file:
       - ${PRODUCTION_ENV_FILE:-../../.env.production}
     expose:
