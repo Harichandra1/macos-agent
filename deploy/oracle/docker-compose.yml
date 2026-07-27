@@ -45,12 +45,18 @@ services:
       DUCKDNS_DOMAIN: ${DUCKDNS_DOMAIN:?DUCKDNS_DOMAIN must be set in .env.production}
       DUCKDNS_TOKEN: ${DUCKDNS_TOKEN:?DUCKDNS_TOKEN must be set in .env.production}
     entrypoint: ["/bin/sh", "-c"]
+    # MUST be a literal block (|), not a folded one (>-). In a folded scalar,
+    # lines indented deeper than the first line keep their newlines instead of
+    # being joined — which split this into a bare `curl` with no URL followed by
+    # the URL as its own command. Keep the backslash continuation explicit.
+    # Empty ip= tells DuckDNS to use the request's source address, so the record
+    # follows the VM automatically if Oracle assigns a new public IP.
     command:
-      - >-
+      - |
         while true; do
-          curl --fail --silent --show-error
-          "https://www.duckdns.org/update?domains=$$DUCKDNS_DOMAIN&token=$$DUCKDNS_TOKEN&ip=";
-          sleep 300;
+          curl --fail --silent --show-error "https://www.duckdns.org/update?domains=$$DUCKDNS_DOMAIN&token=$$DUCKDNS_TOKEN&ip=" \
+            && echo "duckdns: updated $$DUCKDNS_DOMAIN"
+          sleep 300
         done
     restart: unless-stopped
 

@@ -106,13 +106,13 @@ echo "$GHCR_TOKEN" | docker login ghcr.io -u Harichandra1 --password-stdin
 
 ## External setup before first launch
 
-1. Create the DuckDNS subdomain `macosagent-hari.duckdns.org`, point it to the
+1. Create the DuckDNS subdomain `macos-agent-hari.duckdns.org`, point it to the
    Oracle VM public IP, and put the DuckDNS token in `.env.production`.
 2. Create a Neon Postgres database and use its **direct** SSL connection string
    as `DATABASE_URL`; do not use a transaction-pooler URL for the long-lived
    LangGraph checkpointer connection.
 3. Create a Google Web OAuth client. Add
-   `https://macosagent-hari.duckdns.org` to Authorized JavaScript origins and
+   `https://macos-agent-hari.duckdns.org` to Authorized JavaScript origins and
    add the hosted `/`, `/privacy`, and `/terms` pages to the consent branding.
 4. Create a Grafana Cloud access policy token with Prometheus write and Loki
    write permissions. Copy the Prometheus remote-write URL/instance ID and
@@ -133,9 +133,9 @@ chmod 600 .env.production
 Then verify from your laptop:
 
 ```bash
-curl -fsS https://macosagent-hari.duckdns.org/health
+curl -fsS https://macos-agent-hari.duckdns.org/health
 curl -fsS -o /dev/null -w '%{http_code}\n' \
-  https://macosagent-hari.duckdns.org/metrics
+  https://macos-agent-hari.duckdns.org/metrics
 ```
 
 The health request should return `status: ok`. Public `/metrics` should return
