@@ -1,5 +1,18 @@
 // Alloy runs beside the app on the Oracle VM. It is the only component that
 // can read the app's protected /metrics endpoint and Docker's JSON log stream.
+//
+// Debugging: the component-health UI is published on the VM's loopback only.
+// Tunnel to it rather than opening a port:
+//   ssh -N -L 12345:127.0.0.1:12345 ubuntu@<vm>   # then http://localhost:12345
+// See deploy/oracle/README.md. Component errors also reach `docker compose logs
+// alloy` because of the logging block below — without it a wrong Grafana Cloud
+// URL or a token missing the metrics:write scope fails completely silently,
+// which is indistinguishable from "no data yet".
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
 
 prometheus.scrape "macos_agent" {
   targets = [{"__address__" = "app:8000", "job" = "macos-agent"}]

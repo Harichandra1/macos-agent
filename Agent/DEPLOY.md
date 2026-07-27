@@ -105,12 +105,25 @@ else.
 
 ```bash
 scripts/smoke_test.sh https://<service>.onrender.com          # public checks, no spend
+METRICS_TOKEN=... scripts/smoke_test.sh https://<service>...  # strongest gate
 scripts/smoke_test.sh https://<service>.onrender.com --full   # + one real chat turn
 ```
 
 Exit 0 = healthy. Wire this as a post-deploy gate; a non-zero exit is a
-rollback trigger. Also glance at `GET /health` — `ready: true` means all
-required credentials resolved and the agent built.
+rollback trigger.
+
+The assertions adapt to how the target is configured, so a hardened deployment
+does not false-fail: without `METRICS_TOKEN` the metrics check accepts 200 **or**
+401 (both correct depending on `APP_ENV`), and when Google auth is enabled the
+chat probes assert 401, because `Depends(current_user)` resolves before the
+handler body and the guardrails never run. Guardrail *logic* is covered by
+`Agent/backend/tests/test_guardrails.py`; set `SMOKE_BEARER` to a session JWT if
+you want the gate to exercise it through the API too.
+
+Also glance at `GET /health`: `ready: true` means all required credentials
+resolved and the agent built, and `checkpointer` reports which tier is live —
+`memory` against a Postgres `DATABASE_URL` means conversation memory silently
+degraded and every session is being lost on restart.
 
 ## Rollback
 

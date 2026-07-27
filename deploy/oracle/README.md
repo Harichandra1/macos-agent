@@ -64,7 +64,17 @@ config change.
 
 Create the VM in the tenancy's home region, add an SSH public key, and allow
 TCP ports 22, 80, and 443 in the VCN security list. Do not open port 8000,
-9090, or 3000.
+9090, 3000, or 12345.
+
+**Port 80 matters even though the app is HTTPS-only.** Caddy can obtain
+certificates over TLS-ALPN-01 on 443 alone, so a deployment with only 443 open
+looks healthy — but anyone typing the bare hostname without `https://` gets a
+connection timeout instead of a redirect. Verify both:
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' http://<domain>/health   # expect 308
+curl -fsS https://<domain>/health
+```
 
 ## One-time host setup
 
@@ -138,13 +148,48 @@ curl -fsS -o /dev/null -w '%{http_code}\n' \
   https://macos-agent-hari.duckdns.org/metrics
 ```
 
-The health request should return `status: ok`. Public `/metrics` should return
-401; Alloy reads it privately using `METRICS_TOKEN`. Open the landing page,
-follow the `/app` link, sign in with Google, and complete one real test turn.
+The health request should return `status: ok`. It also reports `checkpointer`:
+`postgres` is correct, and `memory` against a Postgres `DATABASE_URL` means the
+checkpointer silently degraded and conversation history is being lost on every
+restart — check the app logs for the ERROR describing why.
+
+Public `/metrics` should return 401; Alloy reads it privately using
+`METRICS_TOKEN`. Open the landing page, follow the `/app` link, sign in with
+Google, and complete one real test turn — then send a **follow-up in the same
+conversation**, which is what actually exercises checkpoint reads.
+
+Run the smoke test as a gate. Passing `METRICS_TOKEN` gives its strongest form
+(it authenticates the metrics scrape instead of only asserting the endpoint is
+protected):
+
+```bash
+METRICS_TOKEN=... scripts/smoke_test.sh https://macos-agent-hari.duckdns.org
+```
 
 Import `observability/grafana/dashboards/macos_agent.json` into Grafana Cloud
-and select the Cloud Prometheus datasource. Logs appear in Explore through the
-Cloud Loki datasource with `service` and `container` labels.
+and select the Cloud Prometheus datasource from the `datasource` variable. Logs
+appear in Explore through the Cloud Loki datasource with `service` and
+`container` labels. See [`observability/README.md`](../../observability/README.md)
+for what to check when panels are empty.
+
+### Debugging Alloy
+
+Alloy publishes its component-health UI on the VM's **loopback only**, so it is
+not reachable from the internet and needs no VCN change. Tunnel to it:
+
+```bash
+ssh -N -L 12345:127.0.0.1:12345 ubuntu@<vm-public-ip>
+```
+
+Then open `http://localhost:12345` — it shows every component's health, the
+scrape target's status, and remote-write errors. The same errors appear in:
+
+```bash
+docker compose --env-file .env.production \
+  -f deploy/oracle/docker-compose.yml logs -f alloy
+```
+
+Do **not** add 12345 to the VCN security list.
 
 ## Updates, rollback, and recovery
 

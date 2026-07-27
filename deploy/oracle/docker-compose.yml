@@ -67,7 +67,27 @@ services:
         condition: service_healthy
     env_file:
       - ${PRODUCTION_ENV_FILE:-../../.env.production}
-    command: ["run", "/etc/alloy/config.alloy", "--storage.path=/var/lib/alloy"]
+    # sys.env() in config.alloy returns "" for anything unset, so a missing
+    # variable produces a component that silently ships nothing. Declaring them
+    # with ${VAR:?} (same form caddy and duckdns use) makes `compose config`
+    # fail by name instead — and deploy.sh runs `compose config` BEFORE pulling,
+    # so the deploy aborts before anything changes.
+    environment:
+      METRICS_TOKEN: ${METRICS_TOKEN:?METRICS_TOKEN must be set in .env.production}
+      GRAFANA_PROMETHEUS_REMOTE_WRITE_URL: ${GRAFANA_PROMETHEUS_REMOTE_WRITE_URL:?GRAFANA_PROMETHEUS_REMOTE_WRITE_URL must be set in .env.production}
+      GRAFANA_PROMETHEUS_USERNAME: ${GRAFANA_PROMETHEUS_USERNAME:?GRAFANA_PROMETHEUS_USERNAME must be set in .env.production}
+      GRAFANA_LOKI_WRITE_URL: ${GRAFANA_LOKI_WRITE_URL:?GRAFANA_LOKI_WRITE_URL must be set in .env.production}
+      GRAFANA_LOKI_USERNAME: ${GRAFANA_LOKI_USERNAME:?GRAFANA_LOKI_USERNAME must be set in .env.production}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:?GRAFANA_CLOUD_API_KEY must be set in .env.production}
+    # --server.http.listen-addr is REQUIRED: Alloy binds container-loopback by
+    # default, so publishing the port without it reaches nothing. The
+    # "127.0.0.1:" host prefix keeps the UI off the public interface — reach it
+    # with an SSH tunnel, and never open 12345 in the VCN.
+    command: ["run", "/etc/alloy/config.alloy",
+              "--storage.path=/var/lib/alloy",
+              "--server.http.listen-addr=0.0.0.0:12345"]
+    ports:
+      - "127.0.0.1:12345:12345"
     volumes:
       - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - alloy_data:/var/lib/alloy

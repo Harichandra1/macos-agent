@@ -13,7 +13,9 @@
         "name": "datasource",
         "type": "datasource",
         "query": "prometheus",
-        "current": { "text": "Prometheus", "value": "macos-agent-prom" },
+        "description": "Deliberately unpinned. Hardcoding a current uid (this was 'macos-agent-prom', which exists only in the local provisioned stack) leaves every panel bound to a dangling datasource on Grafana Cloud. Empty lets Grafana resolve the default Prometheus and offer a picker. Do NOT switch to the __inputs/DS_PROMETHEUS import pattern: the file provisioner used by observability/docker-compose.yml cannot resolve __inputs, so that would break the local stack instead.",
+        "current": {},
+        "refresh": 1,
         "hide": 0
       }
     ]
@@ -124,14 +126,16 @@
     {
       "type": "gauge",
       "title": "Positive feedback ratio",
+      "description": "increase() rather than the raw counter because a redeploy resets counters to zero, which made this read a red 0% after every deploy. clamp_min was also removed: it made 'nobody has rated yet' indistinguishable from 'everyone hated it'. With no ratings the division is 0/0, Prometheus drops the series, and the panel shows the noValue text instead.",
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "gridPos": { "h": 7, "w": 6, "x": 12, "y": 21 },
       "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1,
+        "noValue": "no ratings yet",
         "thresholds": { "steps": [
           { "color": "red", "value": null },
           { "color": "yellow", "value": 0.5 },
           { "color": "green", "value": 0.75 } ] } } },
-      "targets": [ { "refId": "A", "expr": "sum(macos_feedback_total{rating=\"up\"}) / clamp_min(sum(macos_feedback_total), 1)" } ]
+      "targets": [ { "refId": "A", "expr": "sum(increase(macos_feedback_total{rating=\"up\"}[30d])) / sum(increase(macos_feedback_total[30d]))" } ]
     },
     {
       "type": "timeseries",
