@@ -12,6 +12,8 @@ wheels/
 # Credentials — never commit
 .env
 .env.production
+.env.bak.*
+.env.production.bak.*
 
 # Local desktop/assistant state — never part of the deploy artifact
 .DS_Store

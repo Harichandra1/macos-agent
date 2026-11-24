@@ -248,11 +248,31 @@ gh secret set QDRANT_URL
 gh secret set QDRANT_API_KEY
 ```
 
-Actions is the primary host because a laptop cron only fires when the laptop is
-awake — exactly the quiet stretch that kills the cluster. The one gap is that
-GitHub disables scheduled workflows in a public repository after 60 days with no
-repository activity. If this repo may go quiet that long, add a belt-and-braces
-cron on this VM, which has no such rule:
+Two conditions apply to the Actions schedule, and both fail silently, which is
+how the cluster was lost before: GitHub runs `schedule` triggers **only from the
+repository's default branch**, and it disables scheduled workflows in a public
+repository after 60 days with no repository activity. So Actions alone is not
+enough.
+
+### Second heartbeat: a LaunchAgent on the development Mac
+
+```bash
+scripts/install_keepalive_launchd.sh install     # daily at 03:17
+scripts/install_keepalive_launchd.sh status
+launchctl kickstart -p gui/$(id -u)/com.macosagent.qdrant-keepalive   # run now
+```
+
+This has neither of the Actions conditions and uploads no credentials anywhere
+— `scripts/qdrant_keepalive_local.sh` reads the repo's own gitignored `.env`,
+because a LaunchAgent inherits nothing from a login shell. Its weakness is that
+it cannot run while the Mac is off, but launchd runs a missed
+`StartCalendarInterval` job at the next wake, and Qdrant's thresholds are a week
+and four weeks — so a Mac opened even weekly keeps the cluster alive. Log:
+`~/Library/Logs/qdrant-keepalive.log`.
+
+### Third heartbeat: cron on this VM
+
+The VM is always on and has no 60-day rule:
 
 ```bash
 # crontab -e  (on the VM)
