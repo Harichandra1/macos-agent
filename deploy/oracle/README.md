@@ -227,6 +227,45 @@ REPO_URL=https://github.com/Harichandra1/macos-agent \
 Neon contains the users, credits, feedback, and LangGraph checkpoints, so VM
 recovery does not require restoring application state.
 
+## Keeping the Qdrant cluster alive
+
+Qdrant Cloud suspends a free-tier cluster after one week "without use" and
+deletes it after four weeks of inactivity, unrecoverably. The `macos_kb`
+collection has already been lost twice this way, and Neon does **not** hold the
+vectors — recovery means re-embedding ~66k chunks.
+
+`.github/workflows/qdrant-keepalive.yml` runs `scripts/qdrant_keepalive.sh`
+daily on an Actions runner. The script performs real data-plane operations (a
+point read and a vector query, not just a metadata `GET`), because Qdrant's
+docs state the thresholds but never define what "use" means. It fails loudly
+when the cluster is unreachable or the collection has lost its points, so a red
+run is the early warning.
+
+It needs two repository secrets:
+
+```bash
+gh secret set QDRANT_URL
+gh secret set QDRANT_API_KEY
+```
+
+Actions is the primary host because a laptop cron only fires when the laptop is
+awake — exactly the quiet stretch that kills the cluster. The one gap is that
+GitHub disables scheduled workflows in a public repository after 60 days with no
+repository activity. If this repo may go quiet that long, add a belt-and-braces
+cron on this VM, which has no such rule:
+
+```bash
+# crontab -e  (on the VM)
+19 4 * * * cd /opt/macos-agent && set -a && . ./.env.production && set +a && \
+  bash scripts/qdrant_keepalive.sh >> /var/log/qdrant-keepalive.log 2>&1
+```
+
+Run it by hand to check credentials before trusting either schedule:
+
+```bash
+set -a && . ./.env.production && set +a && bash scripts/qdrant_keepalive.sh
+```
+
 ## Troubleshooting
 
 | Symptom | Cause and fix |
