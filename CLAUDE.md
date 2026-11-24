@@ -222,7 +222,8 @@ against this rule first.
 ```python
 def retrieve(query, macos_version, mac_chip, n=5):
     where = {"$and": [
-        {"macos_versions": {"$contains": macos_version}},
+        # NEVER filter on the user's version string alone -- see the rule below.
+        {"macos_versions": {"$in": version_match_values(macos_version)}},
         # mac_chip filter only when the KB actually has chip-specific docs;
         # don't over-filter and starve retrieval on sparse categories
     ]}
@@ -231,6 +232,29 @@ def retrieve(query, macos_version, mac_chip, n=5):
         return web_search_fallback(query)
     return results
 ```
+
+### Version matching -- non-negotiable rule
+
+A version filter must always widen the user's version to
+`[exact, major, "all"]` (`version_match_values()` in
+`Agent/backend/app/agent/retrieval.py`). Two facts about the corpus make the
+obvious implementations silently wrong:
+
+- **77.7% of chunks are tagged `["all"]`.** Omitting `"all"` from the filter
+  throws away three-quarters of the KB and sends nearly every query to the web
+  fallback -- which defeats the point of having a KB.
+- **Version-specific docs are tagged with bare MAJOR releases.** 1,238 chunks
+  carry `"14"`, 1,843 carry `"13"`, 2,296 carry `"10.15"`; point-release tags
+  barely exist (`"14.4"` has 17). So an exact-string match drops every
+  major-release doc the moment the user is precise: filtering on `"10.15.7"`
+  loses all 2,296 Catalina documents, and the user who states an exact version
+  gets the *least* specific results.
+
+The 10.x scheme keeps two components -- `10.15` is Catalina, a distinct
+release, while a bare `10` spans 2001-2020 and is meaningless. 11+ keeps one.
+The same widening applies to the rerank's version boost, which otherwise never
+fires for a point release. `Agent/backend/tests/test_version_filter.py` pins
+all of this down.
 
 Confidence threshold should be tuned against a real test set (see Testing
 below), not guessed once and left alone.

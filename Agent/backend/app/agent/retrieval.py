@@ -84,6 +84,48 @@ DEFAULT_SOURCE_WEIGHT = 1.00
 # docs ahead of stronger general matches.
 VERSION_MATCH_BOOST = 0.02
 
+# A hit that matches only the major release ("14" for a query of "14.1") is still
+# a better match than a version-agnostic doc, but weaker than an exact hit, so it
+# gets a fraction of the boost rather than the whole thing.
+MAJOR_VERSION_MATCH_BOOST = VERSION_MATCH_BOOST / 2
+
+
+def version_match_values(macos_version: Optional[str]) -> list[str]:
+    """Version strings a doc may carry that should match a query for
+    `macos_version`, most specific first, always ending in "all".
+
+    WHY THIS EXISTS: the KB tags version-specific documents with *bare major
+    releases* — 1,238 docs are tagged "14", only 17 carry any 14.x point
+    release — while 77.7% of the corpus is tagged ["all"]. Matching the user's
+    version string verbatim therefore drops every major-release document the
+    moment the user is precise: a query stating "14.1" matched the ["all"]
+    bucket and nothing else, silently losing all 1,238 macOS 14 documents.
+    Users who state an exact version were getting the *least* specific results.
+
+    The 10.x releases need two components, not one: "10.15" is Catalina, a
+    distinct release, whereas a bare "10" spans 2001-2020 and means nothing.
+    So 10.15.7 widens to 10.15, but never to 10.
+    """
+    if not macos_version:
+        return ["all"]
+
+    version = macos_version.strip()
+    if not version or version.lower() in ("all", "any"):
+        return ["all"]
+
+    values = [version]
+    parts = version.split(".")
+    # Legacy "10.x" scheme keeps two components; 11+ keeps one.
+    keep = 2 if parts[0] == "10" else 1
+    if len(parts) > keep:
+        major = ".".join(parts[:keep])
+        if major != version:
+            values.append(major)
+
+    values.append("all")
+    # dict.fromkeys dedupes while preserving most-specific-first order.
+    return list(dict.fromkeys(values))
+
 # Command-aware retrieval. When a query names a CLI tool or asks for exact syntax,
 # the authoritative man page is what wins over a frontier model — but it gets
 # out-competed semantically by chatty community posts and never enters the
@@ -277,8 +319,16 @@ class Retriever:
             src       = payload.get("source", "")
             weight    = SOURCE_WEIGHT.get(src, DEFAULT_SOURCE_WEIGHT)
             score     = cosine * weight
-            if macos_version and macos_version in payload.get("macos_versions", []):
-                score += VERSION_MATCH_BOOST
+            if macos_version:
+                # Same reason as the filter: an exact string test never fires
+                # for a point release, because the docs are tagged with bare
+                # major versions. Rank exact above major above version-agnostic.
+                doc_versions = payload.get("macos_versions", [])
+                candidates = version_match_values(macos_version)
+                if candidates[0] in doc_versions:
+                    score += VERSION_MATCH_BOOST
+                elif any(c in doc_versions for c in candidates[1:-1]):
+                    score += MAJOR_VERSION_MATCH_BOOST
             if category and payload.get("category") == normalize_category(category):
                 score += CATEGORY_MATCH_BOOST
             # Strong boost for a named command's own man page.
@@ -358,7 +408,9 @@ class Retriever:
             conditions.append(
                 FieldCondition(
                     key="macos_versions",
-                    match=MatchAny(any=[macos_version, "all"]),
+                    # Widens "14.1" to ["14.1", "14", "all"]; without the major
+                    # release the filter admits only version-agnostic docs.
+                    match=MatchAny(any=version_match_values(macos_version)),
                 )
             )
 

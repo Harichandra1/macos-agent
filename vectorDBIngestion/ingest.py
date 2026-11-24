@@ -160,14 +160,17 @@ def setup_collection(client: QdrantClient, collection: str, reset: bool = False)
     """
     existing = {c.name for c in client.get_collections().collections}
 
-    if reset and collection in existing:
-        print(f"  --reset: deleting collection '{collection}'...")
-        client.delete_collection(collection)
-        existing.discard(collection)
-        # Also clear progress so we re-embed everything
+    if reset:
+        if collection in existing:
+            print(f"  --reset: deleting collection '{collection}'...")
+            client.delete_collection(collection)
+            existing.discard(collection)
+        # Clear progress unconditionally — a progress file left over from a
+        # previous (or deleted) cluster must never survive a reset, or a later
+        # --incremental run silently skips every chunk and upserts nothing.
         if PROGRESS_FILE.exists():
             PROGRESS_FILE.unlink()
-        print("  Progress file cleared.")
+            print("  Progress file cleared.")
 
     if collection not in existing:
         print(f"  Creating collection '{collection}' (dim={VECTOR_DIM}, cosine)...")

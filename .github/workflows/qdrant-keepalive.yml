@@ -1,0 +1,57 @@
+name: Qdrant keepalive
+
+# WHY THIS EXISTS: Qdrant Cloud suspends a free-tier cluster after one week
+# "without use" and deletes it after four weeks of inactivity, unrecoverably.
+# The macos_kb collection has already been lost twice this way; each loss costs
+# a full re-embed of ~66k chunks. This workflow is the heartbeat that prevents
+# a third loss.
+#
+# WHY HERE AND NOT THE MAC: a launchd job only fires when the laptop is awake,
+# which is exactly the stretch of quiet days that kills the cluster. Actions
+# runners are always on, free on this public repository, and already trusted
+# with deployment for this project.
+#
+# WHY DAILY rather than weekly: the suspension threshold is one week, and
+# GitHub explicitly does not guarantee scheduled runs fire on time — cron
+# events can be delayed or dropped entirely when the Actions queue is busy.
+# Daily means six consecutive misses are survivable. Each run is a few seconds
+# of a free runner, so the margin is free.
+#
+# KNOWN LIMIT: GitHub disables scheduled workflows in a *public* repository
+# after 60 days with no repository activity, and emails the owner when it does.
+# Any commit re-arms it. If this repo may go quiet for two months, pair this
+# with a cron on the Oracle VM (see deploy/oracle/README.md) which has no such
+# rule.
+on:
+  schedule:
+    # 03:17 UTC. A deliberately odd minute: Actions cron load spikes on the
+    # hour, and jobs scheduled at :00 are the first to be delayed or dropped.
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# Two runs overlapping would be harmless but pointless; drop a queued run if
+# one is already in flight.
+concurrency:
+  group: qdrant-keepalive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Touch the cluster
+    runs-on: ubuntu-24.04
+    # A hung request should not burn a runner for six hours on the free tier.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Fails the job (and so emails the owner) when the cluster is suspended,
+      # deleted, or has lost its points. A red run here is the early warning
+      # that used to arrive only as a destroyed knowledge base.
+      - name: Keepalive request
+        env:
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          QDRANT_COLLECTION: ${{ vars.QDRANT_COLLECTION || 'macos_kb' }}
+        run: bash scripts/qdrant_keepalive.sh

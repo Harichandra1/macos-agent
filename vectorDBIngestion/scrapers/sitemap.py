@@ -258,6 +258,58 @@ class AppleSupportScraper:
         segment = urlparse(url).path.lstrip("/").split("/")[0]
         return segment if "-" in segment else "en-us"
 
+    # Class-name fragments that mark Apple's site chrome rather than article
+    # content: globalnav-* is the top bar, ac-gf-* / ac-ls-* the footer and
+    # locale switcher.
+    CHROME_CLASS_HINTS = ("globalnav", "ac-gf", "ac-ls", "cookie", "banner")
+
+    @classmethod
+    def _strip_page_chrome(cls, soup) -> None:
+        """
+        Remove navigation, footer and non-prose tags in place.
+
+        Everything downstream (summary, sections, affected_devices,
+        macos_versions, difficulty_tier, category) reads text off this soup, so
+        the chrome has to go before any of it runs — not after.
+        """
+        for tag in soup.find_all(["script", "style", "noscript", "nav",
+                                  "footer", "aside", "svg", "form"]):
+            tag.decompose()
+        for tag in soup.find_all(
+            class_=lambda c: c and any(
+                hint in " ".join(c if isinstance(c, list) else [c]).lower()
+                for hint in cls.CHROME_CLASS_HINTS
+            )
+        ):
+            tag.decompose()
+
+    @staticmethod
+    def _find_content_root(soup):
+        """
+        Return the element holding the article body.
+
+        Apple Support pages carry no <main> or <article>, so a bare
+        class-contains-"content" lookup matched `globalnav-content` — the nav
+        bar — because it comes first in document order. Match the real wrapper
+        (`div.main.section.viewport-content`) explicitly instead, and only then
+        fall back to progressively looser containers.
+        """
+        for class_names in (("viewport-content",), ("main", "section")):
+            el = soup.find(
+                "div",
+                class_=lambda c: c and all(
+                    n in (c if isinstance(c, list) else [c]) for n in class_names
+                ),
+            )
+            if el:
+                return el
+        return (
+            soup.find("article")
+            or soup.find("main")
+            or soup.find(id="main")
+            or soup
+        )
+
     def extract_article_data(self, html: str, url: str) -> Optional[Dict]:
         """
         Parse an HT or numeric-ID article page and return a KB-schema dict.
@@ -273,6 +325,13 @@ class AppleSupportScraper:
                 return None
             doc_id = f"{locale}_{article_id}"
 
+            # Drop chrome before reading any text. Apple wraps every support
+            # page in a global nav ("Apple Store Mac iPad iPhone Watch AirPods")
+            # and a global footer; leaving them in put nav text into embed_text
+            # and made _classify_category match "airpods" on every single
+            # article, so all of them came out as bluetooth.
+            self._strip_page_chrome(soup)
+
             # title
             title_tag = soup.find("h1") or soup.find("title")
             title = title_tag.get_text(strip=True) if title_tag else "N/A"
@@ -284,8 +343,12 @@ class AppleSupportScraper:
                     last_modified = meta.get("content")
                     break
 
+            # Everything derived below reads the article body only, so a device
+            # or version named in the page chrome can't leak into metadata.
+            content_root = self._find_content_root(soup)
+            page_text = content_root.get_text(separator=" ", strip=True)
+
             # affected devices
-            page_text = soup.get_text()
             affected_devices = sorted(
                 {kw for kw in DEVICE_KEYWORDS if kw.lower() in page_text.lower()}
             ) or ["Unknown"]
@@ -302,7 +365,7 @@ class AppleSupportScraper:
 
             # summary — first paragraph with real content
             summary = ""
-            for p in soup.find_all("p"):
+            for p in content_root.find_all("p"):
                 text = p.get_text(strip=True)
                 if len(text) > 40:
                     summary = text
@@ -310,12 +373,6 @@ class AppleSupportScraper:
 
             # sections — walk heading + following content
             sections: List[Dict] = []
-            content_root = (
-                soup.find("div", class_=lambda c: c and "content" in c.lower())
-                or soup.find("article")
-                or soup.find("main")
-                or soup
-            )
             current_heading = "Overview"
             body_parts: List[str] = []
 
@@ -342,7 +399,7 @@ class AppleSupportScraper:
             # numbered steps from <ol> tags
             steps = [
                 li.get_text(strip=True)
-                for ol in soup.find_all("ol")
+                for ol in content_root.find_all("ol")
                 for li in ol.find_all("li")
                 if li.get_text(strip=True)
             ]

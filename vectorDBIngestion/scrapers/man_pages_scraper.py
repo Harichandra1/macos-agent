@@ -360,6 +360,21 @@ CUSTOM_DOCS = [
 # Step 1 — export man pages to plain text
 # ---------------------------------------------------------------------------
 
+def strip_troff_artifacts(text: str) -> str:
+    """
+    Remove the overstrike encoding `man -P cat` emits for bold and underline.
+
+    groff renders bold as `N\\bN` (char, backspace, same char) and underline as
+    `_\\bc` (underscore, backspace, char). Left in place these wreck everything
+    downstream: section headers arrive as `N\\bNA\\bAM\\bME\\bE` instead of
+    `NAME`, so parse_man_sections finds no headers and every body comes out
+    empty. Dropping each `<char><backspace>` pair collapses both forms back to
+    the underlying character. Form feeds from page breaks go too.
+    """
+    text = re.sub(r".\x08", "", text)
+    return text.replace("\x0c", "")
+
+
 def export_man_page(gz_path: str) -> Optional[Dict]:
     """
     Convert a man page file to plain text (handles both .gz and plain troff).
@@ -376,10 +391,13 @@ def export_man_page(gz_path: str) -> Optional[Dict]:
         result = subprocess.run(
             ["man", "-P", "cat", command],
             capture_output=True, text=True, timeout=10,
+            # Fixed width keeps wrapping predictable regardless of the
+            # terminal the pipeline happens to run under.
+            env={**os.environ, "MANWIDTH": "80"},
         )
         if result.returncode != 0 or not result.stdout.strip():
             return None
-        raw_text = result.stdout.strip()
+        raw_text = strip_troff_artifacts(result.stdout).strip()
         if len(raw_text) < 200:
             return None
         return {
